@@ -1,0 +1,12 @@
+.venv/
+__pycache__/
+*.py[cod]
+.yolo*.part
+
+# Generated datasets, training runs, and exported weights
+Dataset/
+weights/
+*.pt
+ai_engine/data/processed/
+ai_engine/runs/
+ai_engine/artifacts/
