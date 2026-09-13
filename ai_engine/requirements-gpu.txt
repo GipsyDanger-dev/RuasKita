@@ -1,0 +1,5 @@
+# Install after requirements.txt on NVIDIA Windows machines.
+# Official PyTorch CUDA 13.0 index; compatible with the installed NVIDIA driver.
+--index-url https://download.pytorch.org/whl/cu130
+torch==2.9.0
+torchvision==0.24.0

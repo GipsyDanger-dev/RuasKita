@@ -1,0 +1,39 @@
+version: 1
+purpose: "Provenance and permitted use tracking for RuasKita AI Engine v0.3"
+sources:
+  - id: dataset1
+    local_path: Dataset/Dataset1
+    modality: "RGB classification: normal versus pothole"
+    labels: "folder-level class"
+    training_use: "hard-negative and classification analysis only"
+    license: "CC0 according to the source Kaggle card; retain source record before distribution"
+    metric_depth: false
+  - id: dataset2
+    local_path: Dataset/Dataset2
+    modality: "RGB"
+    labels: "Pascal VOC pothole bounding boxes"
+    training_use: "detection-only benchmark; do not synthesize segmentation masks"
+    license: "DbCL according to source description; attribution and downstream-license review required"
+    metric_depth: false
+  - id: pothole600
+    local_path: Dataset/Dataset3/pothole600
+    modality: "paired RGB, transformed disparity, semantic mask"
+    labels: "pixel-level pothole masks"
+    training_use: "segmentation and relative-depth research"
+    license: "research dataset; retain citation and verify redistribution terms before release"
+    metric_depth: false
+    measurement_warning: "tdisp is transformed disparity/inverse-depth evidence, not calibrated centimetre depth."
+  - id: dataset4
+    local_path: Dataset/Dataset4
+    modality: "RGB"
+    labels: "YOLO polygons; four source labels normalized to pothole"
+    training_use: "primary segmentation training after exact deduplication and split rebuild; empty annotations excluded after visual audit found unlabelled potholes"
+    license: "CC BY 4.0 recorded in local data.yaml"
+    metric_depth: false
+  - id: dataset5
+    local_path: Dataset/Dataset5
+    modality: "RGB"
+    labels: "YOLO bounding boxes"
+    training_use: "detection-only benchmark; do not synthesize segmentation masks"
+    license: "unknown; source and license must be documented before shipping a derived model"
+    metric_depth: false
