@@ -1,0 +1,49 @@
+# Reproducible offline comparison protocol for the RuasVision release decision.
+dataset:
+  yaml: ai_engine/data/processed/ruaskita-seg-v0.3/data.yaml
+  name: ruaskita-seg-v0.3
+  split: fixed, leakage-free train/val/test split created by prepare_segmentation_dataset.py
+
+shared_training:
+  epochs_max: 100
+  early_stopping_patience: 20
+  image_size: 640
+  device: "0"
+  workers: 0
+  batch: -1
+  seed: 42
+  deterministic: true
+
+plateau_evidence:
+  name: yolo11n-seg-v0.3-final
+  initialization: ai_engine/runs/yolo11n-seg-v0.3/weights/best.pt
+  purpose: Verify that the incumbent YOLO11n can continue until validation performance plateaus.
+  selection_eligible: false
+  note: Its pre-v0.3 fine-tuning history differs from a newly initialized YOLO11s run,
+    so it cannot be the only YOLO11n evidence used for architecture selection.
+
+comparison_candidates:
+  - name: yolo11n-seg-v0.3-comparison
+    initialization: yolo11n-seg.pt
+  - name: yolo11s-seg-v0.3-comparison
+    initialization: yolo11s-seg.pt
+
+evaluation:
+  held_out_split: test
+  primary_selection_metric: mask_map50_95
+  secondary_metrics:
+    - mask_map50
+    - mask_precision
+    - mask_recall
+  operating_point:
+    image_presence_confidence: 0.50
+    hard_negative_confidence: 0.25
+    hard_negative_set: Dataset1 normal-road images only
+
+release_gate:
+  - The incumbent YOLO11n completes plateau training and held-out evaluation.
+  - Both comparison candidates begin from their official pretrained weights and complete the same held-out test evaluation.
+  - Both comparison candidates complete the same two operating-point evaluations.
+  - Select the highest held-out test mask mAP50-95 unless a documented operational regression requires review.
+  - Freeze only the selected best.pt path and its measured metrics in the release manifest.
+  - Keep physical-depth output disabled until metric-depth calibration and field validation are complete.
