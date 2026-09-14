@@ -89,7 +89,7 @@ def main() -> None:
         "selection_criterion": "Highest held-out test mask mAP50-95; review any operational regression before release.",
         "candidates": evidence,
         "recommended_winner": winner["candidate"],
-        "status": "evidence-complete-pending-human-operational-review",
+        "status": "evidence-complete-for-offline-freeze",
     }
     args.output.parent.mkdir(parents=True, exist_ok=True)
     args.output.write_text(json.dumps(decision, indent=2), encoding="utf-8")
