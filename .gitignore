@@ -10,3 +10,7 @@ weights/
 ai_engine/data/processed/
 ai_engine/runs/
 ai_engine/artifacts/
+services/api/data/
+apps/web/test-results/
+apps/web/playwright-report/
+.gstack/
