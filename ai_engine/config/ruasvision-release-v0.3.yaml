@@ -1,6 +1,7 @@
 release: RuasVision v0.3
-status: incumbent-offline-candidate-pending-fair-comparison
-checkpoint: ai_engine/runs/yolo11n-seg-v0.3/weights/best.pt
+status: frozen-offline-release
+checkpoint: ai_engine/runs/yolo11n-seg-v0.3-comparison/weights/best.pt
+checkpoint_sha256: 368dd3d40bc8cae11e0108d164d461669da9bf5118d8195cd1075afa33053c26
 dataset: ruaskita-seg-v0.3
 inference:
   confidence_threshold: 0.50
@@ -8,18 +9,17 @@ inference:
   response_contract: ai_engine/contracts/ruasvision-inference-v0.2.schema.json
 test_metrics:
   samples: 744
-  mask_precision: 0.6850101348
-  mask_recall: 0.5947476828
-  mask_map50: 0.6459983326
-  mask_map50_95: 0.3381987859
+  mask_precision: 0.6608301904
+  mask_recall: 0.6270519427
+  mask_map50: 0.6638482247
+  mask_map50_95: 0.3453155034
 operating_point:
   scope: image-level presence at fixed confidence; not mask IoU/mAP
   confidence_threshold: 0.50
-  image_precision: 0.9983249581
-  image_recall: 0.8700729927
+  image_precision: 0.9984025559
+  image_recall: 0.9124087591
   normal_road_false_positive_rate: 0.0169491525
 limitations:
-  - This incumbent is not the final frozen release; fair YOLO11n-versus-YOLO11s comparison remains required.
   - Offline benchmark only; final field validation remains required.
   - No physical depth in centimetres is emitted.
   - Pothole severity must remain a reviewable business rule until metric-depth calibration exists.

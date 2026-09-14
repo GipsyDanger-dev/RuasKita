@@ -2,28 +2,28 @@
 
 ## Selected segmentation checkpoint
 
-`runs/yolo11n-seg-v0.3/weights/best.pt` is the incumbent offline candidate,
-not the final frozen integration checkpoint. It may be used only for local
-integration prototyping while the fair architecture comparison is pending.
-It is trained on the leakage-free `ruaskita-seg-v0.3` split after an audit
-excluded Dataset4 images with empty but unreliable annotations.
+`runs/yolo11n-seg-v0.3-comparison/weights/best.pt` is the frozen offline
+release checkpoint. SHA-256:
+`368dd3d40bc8cae11e0108d164d461669da9bf5118d8195cd1075afa33053c26`.
+It was selected over YOLO11s-Seg through the pre-declared, independently
+pretrained comparison cohort on `ruaskita-seg-v0.3`.
 
 | Metric (744-image v0.3 test split) | Result |
 | --- | ---: |
-| Mask precision | 0.685 |
-| Mask recall | 0.595 |
-| Mask mAP50 | 0.646 |
-| Mask mAP50-95 | 0.338 |
+| Mask precision | 0.661 |
+| Mask recall | 0.627 |
+| Mask mAP50 | 0.664 |
+| Mask mAP50-95 | 0.345 |
 | Image-level precision at confidence 0.50 | 0.998 |
-| Image-level recall at confidence 0.50 | 0.870 |
+| Image-level recall at confidence 0.50 | 0.912 |
 | Normal-road false-positive rate at confidence 0.50 | 0.017 |
 
-The earlier YOLO26n-Seg run was a short screening experiment on a different
-dataset version and is not a like-for-like release comparison. The v0.3
-checkpoint is the incumbent offline candidate. The final release checkpoint
-will be selected only after the clean YOLO11n and YOLO11s comparison cohort
-passes the shared held-out and false-positive evaluations; field validation
-then remains a separate final acceptance stage.
+The clean YOLO11n cohort beat YOLO11s on held-out mask mAP50-95 (0.345 vs
+0.262), image-level recall at confidence 0.50 (0.912 vs 0.606), and
+hard-negative false-positive rate at confidence 0.25 (0/59 vs 2/59). The
+earlier YOLO26n-Seg run was a short screening experiment on a different dataset
+version and is not a like-for-like release comparison. Field validation remains
+a separate final acceptance stage.
 
 ## Data controls
 

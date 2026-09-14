@@ -11,7 +11,7 @@ from ultralytics import YOLO
 
 
 PROJECT_ROOT = Path(__file__).resolve().parents[2]
-DEFAULT_WEIGHTS = PROJECT_ROOT / "ai_engine" / "runs" / "yolo11n-seg-v0.3" / "weights" / "best.pt"
+DEFAULT_WEIGHTS = PROJECT_ROOT / "ai_engine" / "runs" / "yolo11n-seg-v0.3-comparison" / "weights" / "best.pt"
 
 
 def main() -> None:
