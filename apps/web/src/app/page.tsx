@@ -1,51 +1,80 @@
 "use client";
 
-import { ChangeEvent, useEffect, useState } from "react";
+import { useState } from "react";
+import Workbench from "./workbench";
+import "./home.css";
 
-type Pothole = { confidence: number; bbox_xyxy: number[]; polygon_xy: number[][] };
-type InferenceResponse = { engine: string; confidence_threshold: number; potholes: Pothole[]; depth_policy: string };
-const API_URL = process.env.NEXT_PUBLIC_API_URL ?? "http://127.0.0.1:8000";
-
+const points = [
+  { x: 60.7, y: 37.5, color: "red", name: "Jl. Kaliurang" },
+  { x: 50.8, y: 27.2, color: "amber", name: "Jl. Palagan" },
+  { x: 49.1, y: 39.8, color: "red", name: "Jl. Magelang" },
+  { x: 44.2, y: 47.9, color: "green", name: "Jl. Godean" },
+  { x: 53.4, y: 51.8, color: "amber", name: "Jl. Wates" },
+  { x: 71.2, y: 42.9, color: "amber", name: "Jl. Solo" },
+  { x: 86.2, y: 37.5, color: "amber", name: "Jl. Ring Road" },
+  { x: 75.2, y: 49.9, color: "amber", name: "Jl. Janti" },
+  { x: 65.7, y: 56.5, color: "green", name: "Jl. Parangtritis" },
+  { x: 78.9, y: 60.3, color: "red", name: "Jl. Wonosari" },
+  { x: 61.5, y: 65.9, color: "amber", name: "Jl. Bantul" },
+];
+function Icon({ name }: { name: string }) {
+  const paths: Record<string, string> = {
+    arrow: "M4 12h16m-6-6 6 6-6 6",
+    search: "M21 21l-5-5M18 10a8 8 0 1 1-16 0 8 8 0 0 1 16 0",
+    calendar: "M8 2v4m8-4v4M3 9h18M4 4h16v17H4z",
+    chevron: "m6 9 6 6 6-6",
+    layers: "m3 8 9-5 9 5-9 5-9-5m0 5 9 5 9-5m-18 5 9 5 9-5",
+    locate: "M12 2v4m0 12v4M2 12h4m12 0h4M19 12a7 7 0 1 1-14 0 7 7 0 0 1 14 0",
+  };
+  return <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.5" strokeLinecap="round" strokeLinejoin="round" aria-hidden="true"><path d={paths[name] ?? paths.arrow} /></svg>;
+}
 export default function Home() {
-  const [file, setFile] = useState<File>();
-  const [preview, setPreview] = useState<string>();
-  const [result, setResult] = useState<InferenceResponse>();
-  const [error, setError] = useState<string>();
-  const [isLoading, setIsLoading] = useState(false);
-
-  useEffect(() => () => { if (preview) URL.revokeObjectURL(preview); }, [preview]);
-  function chooseFile(event: ChangeEvent<HTMLInputElement>) {
-    const selected = event.target.files?.[0];
-    if (!selected) return;
-    if (preview) URL.revokeObjectURL(preview);
-    setFile(selected); setPreview(URL.createObjectURL(selected)); setResult(undefined); setError(undefined);
-  }
-  async function analyze() {
-    if (!file) return;
-    setIsLoading(true); setError(undefined);
-    try {
-      const body = new FormData(); body.append("image", file);
-      const response = await fetch(`${API_URL}/v1/inference/image?confidence=0.5`, { method: "POST", body });
-      const payload = await response.json();
-      if (!response.ok) throw new Error(payload.detail ?? "Analisis gambar gagal.");
-      setResult(payload as InferenceResponse);
-    } catch (caught) { setError(caught instanceof Error ? caught.message : "API tidak dapat dihubungi."); }
-    finally { setIsLoading(false); }
-  }
-  return <main>
-    <header className="topbar"><div className="brand"><span>R</span> RuasKita</div><div className="release">RuasVision v0.3 · Offline release</div></header>
-    <section className="hero"><p className="eyebrow">DESKTOP AI WORKBENCH</p><h1>Analisis kondisi jalan<br />dengan bukti visual.</h1><p className="lede">Unggah satu foto jalan untuk mendeteksi dan mensegmentasi pothole dengan checkpoint RuasVision yang telah dibekukan.</p></section>
-    <section className="workspace">
-      <div className="panel upload-panel"><div className="panel-heading"><p>01 / INPUT</p><h2>Foto jalan</h2></div>
-        <label className={`dropzone ${preview ? "has-file" : ""}`}><input type="file" accept="image/jpeg,image/png,image/webp" onChange={chooseFile} />{preview ? <img src={preview} alt="Pratinjau foto jalan" /> : <><strong>Pilih foto jalan</strong><span>JPEG, PNG, atau WebP</span></>}</label>
-        <button type="button" onClick={analyze} disabled={!file || isLoading}>{isLoading ? "Menganalisis…" : "Analisis dengan RuasVision"}</button>
-        {error && <p className="error">{error}. Jalankan API di port 8000 terlebih dahulu.</p>}
-      </div>
-      <div className="panel result-panel"><div className="panel-heading"><p>02 / HASIL</p><h2>Temuan segmentasi</h2></div>
-        {!result && <div className="empty"><span>◎</span><p>Hasil analisis akan tampil di sini.</p></div>}
-        {result && <><div className="result-summary"><strong>{result.potholes.length}</strong><span>pothole terdeteksi</span><small>confidence threshold {Math.round(result.confidence_threshold * 100)}%</small></div><div className="detections">{result.potholes.map((pothole, index) => <article key={index}><span>#{String(index + 1).padStart(2, "0")}</span><b>{Math.round(pothole.confidence * 100)}% confidence</b><small>{pothole.polygon_xy.length} titik polygon</small></article>)}{result.potholes.length === 0 && <p className="clear">Tidak ada pothole yang terdeteksi pada threshold ini.</p>}</div><p className="policy">{result.depth_policy}</p></>}
-      </div>
+  const [dark, setDark] = useState(false);
+  const [selected, setSelected] = useState(0);
+  const [query, setQuery] = useState("");
+  const [reports, setReports] = useState(false);
+  const [filter, setFilter] = useState(false);
+  const [slide, setSlide] = useState(0);
+  const [mapView, setMapView] = useState(false);
+  const [zoom, setZoom] = useState(1);
+  const [profile, setProfile] = useState(false);
+  const point = points[selected];
+  return <div className={`ruas-home ${dark ? "night" : ""} ${mapView ? "map-view" : ""}`}>
+    <div className="scene" style={{ transform: `scale(${zoom})` }} />
+    <header className="home-nav">
+      <a className="home-brand" href="/" aria-label="RuasKita beranda"><img src={dark ? "/brand/dark.png" : "/brand/light.png"} alt="" />RuasKita</a>
+      <nav aria-label="Navigasi utama">
+        <button className={!mapView ? "active" : ""} onClick={() => setMapView(false)}>Beranda</button>
+        <button className={mapView ? "active" : ""} onClick={() => setMapView(true)}>Peta</button>
+        <button onClick={() => setReports(true)}>Laporan</button>
+      </nav>
+      <label className="home-search"><Icon name="search" /><input value={query} onChange={e => setQuery(e.target.value)} placeholder="Cari jalan, lokasi, atau laporan..." aria-label="Cari jalan" /><kbd>⌘ K</kbd></label>
+      <label className="date-range"><Icon name="calendar" /><span>1 – 30 Sep 2026</span><input aria-label="Pilih tanggal laporan" type="date" onChange={e => e.currentTarget.previousElementSibling!.textContent = e.target.value} /></label>
+      <div className="profile-wrap"><button className="profile-button" onClick={() => setProfile(!profile)} aria-expanded={profile}><span className="avatar" /><span>Adam F.<small>Admin</small></span><Icon name="chevron" /></button>
+      {profile && <div className="profile-menu"><span>Profil contoh · mode demo</span><button onClick={() => setDark(!dark)}>{dark ? "☀ Tema terang" : "☾ Tema gelap"}</button></div>}</div>
+    </header>
+    {!mapView && <section className="home-copy">
+      <p className="home-eyebrow">JALAN YANG LEBIH BAIK,<br />BERSAMA.</p><div className="small-rule" />
+      <h1>Pantau Kondisi Jalan<br /><span>Bangun Masa Depan</span></h1>
+      <p className="home-description">RuasKita membantu Anda memahami kondisi jalan<br className="desktop-break" /> secara real-time untuk keputusan yang lebih cepat<br className="desktop-break" /> dan tepat.</p>
+      <div className="hero-actions"><button className="primary-pill" onClick={() => setMapView(true)}>Buka Peta <Icon name="arrow" /></button><button className="text-action" onClick={() => setReports(true)}>Lihat Laporan <span>—</span></button></div>
+    </section>}
+    <section className="map-content" aria-label="Pratinjau peta kondisi jalan Yogyakarta">
+      <span className="place sleman">Sleman</span><span className="place yogya">Yogyakarta</span><span className="place depok">Depok</span><span className="place bantul">Bantul</span>
+      {points.map((p, i) => (!filter || p.color === "red") && (!query || p.name.toLowerCase().includes(query.toLowerCase())) && <button key={p.name} className={`map-dot ${p.color} ${selected === i ? "selected" : ""}`} style={{ left: `${p.x}%`, top: `${p.y}%` }} aria-label={p.name} onClick={() => setSelected(i)} />)}
+      <button className="road-popover" style={{ left: `${Math.min(point.x + 1.4, 76)}%`, top: `${point.y - 9}%` }} onClick={() => setReports(true)}>
+        <span className="road-photo" /><span><strong>{point.name}</strong><span className="condition"><i className={point.color} />Kondisi: {point.color === "red" ? "Kritis" : point.color === "green" ? "Baik" : "Perlu perhatian"}</span><small>Confidence: 92%</small></span><Icon name="arrow" />
+      </button>
+      <div className="map-controls"><button aria-label="Filter kondisi kritis" aria-pressed={filter} onClick={() => setFilter(!filter)}><Icon name="layers" /></button><div><button aria-label="Perbesar" onClick={() => setZoom(Math.min(1.3, zoom + .1))}>+</button><button aria-label="Perkecil" onClick={() => setZoom(Math.max(1, zoom - .1))}>−</button></div><button aria-label="Kembali ke Yogyakarta" onClick={() => { setZoom(1); setSelected(0); setQuery(""); }}><Icon name="locate" /></button></div>
+      <div className="map-scale"><span>0</span><span>2,5</span><span>5 km</span><div /></div>
     </section>
-    <footer>Deteksi AI adalah evidence awal. Validasi lapangan tetap diperlukan untuk keputusan perbaikan.</footer>
-  </main>;
+    <aside className="photo-caption"><p>{["“INFRASTRUKTUR\nYANG LEBIH BAIK\nUNTUK INDONESIA\nYANG LEBIH MAJU.”", "“SETIAP JALAN\nMENYIMPAN CERITA.\nSETIAP LAPORAN\nMEMBAWA PERUBAHAN.”", "“SATU LANGKAH\nUNTUK JALAN AMAN.\nSATU TUJUAN\nUNTUK KITA SEMUA.”"][slide]}</p><div className="small-rule" /><div className="slide-controls"><span>0{slide + 1} <em>/ 03</em></span><button aria-label="Kutipan sebelumnya" onClick={() => setSlide((slide + 2) % 3)}>‹</button><button aria-label="Kutipan berikutnya" onClick={() => setSlide((slide + 1) % 3)}>›</button></div></aside>
+    <section className="bottom-cards">
+      <article className="health-card"><div className="health-ring"><svg viewBox="0 0 120 120"><circle cx="60" cy="60" r="54" /><circle className="progress" cx="60" cy="60" r="54" /></svg><div><strong>72</strong><span>Road Health</span></div></div><div className="health-copy"><h2>Kondisi jalan di wilayah Yogyakarta</h2><p>Masih dalam batas aman, namun terdapat beberapa titik<br />yang perlu segera ditangani.</p><div className="legend"><span><i className="red" />38 Kritis</span><span><i className="amber" />120 Perlu Perhatian</span><span><i className="green" />91 Terselesaikan</span></div></div></article>
+      <button className="latest-card" onClick={() => setReports(true)}><span className="latest-photo" /><span><strong>Laporan Terbaru</strong><small>Lihat rangkuman kondisi jalan<br />dan tindak lanjut.</small></span><Icon name="arrow" /></button>
+    </section>
+    <div className="home-motto"><span />SATU DATA<br />UNTUK JALAN<br />YANG LEBIH BAIK.</div>
+    <span className="demo-label">Pratinjau desain · data contoh</span>
+    {reports && <div className="report-backdrop"><section className="report-dialog" role="dialog" aria-modal="true" aria-label="Analisis laporan"><button className="close-report" onClick={() => setReports(false)}>Tutup ×</button><Workbench /></section></div>}
+  </div>;
 }
