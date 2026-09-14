@@ -1,0 +1,2 @@
+-r ../../ai_engine/requirements.txt
+httpx>=0.28,<1
