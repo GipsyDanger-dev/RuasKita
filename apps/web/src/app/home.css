@@ -30,3 +30,59 @@
 @media(min-width:1700px){.home-nav{gap:3%}.home-copy h1{font-size:3.12vw}.health-card{gap:30px}.health-copy h2{font-size:16px}.health-copy p{font-size:13px}}
 @media(max-width:1250px){.home-nav nav{gap:22px;margin-right:1%}.home-search{width:25%}.home-brand{font-size:21px}.date-range{font-size:10px;padding:10px}.bottom-cards{left:28%;right:5%;height:18%}.health-card{gap:15px;padding:15px}.health-copy h2{font-size:12px}.health-copy p{font-size:10px}.legend{gap:6px;font-size:8px}.health-ring{min-width:85px}.home-motto{display:none}.road-popover{scale:.88;transform-origin:top left}}
 @media(max-width:800px){.ruas-home{min-height:1050px;height:auto}.scene{background-size:auto 100%!important;background-position:45% center!important}.home-nav{top:20px;flex-wrap:wrap;height:auto;gap:18px}.home-nav nav{order:3;width:100%;justify-content:center;margin:0}.home-search{order:4;width:100%}.date-range{display:none}.profile-wrap{margin-left:auto}.home-copy{top:190px;left:6%;background:#f7f7f2d9;padding:18px;border-radius:20px}.night .home-copy{background:#18232bdd}.home-copy h1{font-size:33px}.home-description{font-size:14px}.desktop-break{display:none}.home-copy{right:6%}.home-eyebrow{font-size:9px}.hero-actions{margin-top:18px}.map-content{top:450px;height:310px}.place{font-size:14px}.map-dot{margin-left:-20%}.road-popover{margin-left:-22%;scale:.8}.sleman{top:0}.map-controls{top:20px}.photo-caption,.map-scale{display:none}.bottom-cards{left:5%;right:5%;bottom:45px;height:auto;display:grid;gap:10px}.health-card,.ruas-home .latest-card{width:100%;border-radius:22px;padding:15px}.health-card{height:145px}.health-ring{max-width:100px}.health-copy h2{font-size:12px;white-space:normal}.latest-card{min-height:110px}.latest-photo{height:75px}.map-view .map-content{top:220px;height:500px}.report-backdrop{padding:10px}.home-nav .profile-menu{z-index:20}}
+/* Quiet editorial hierarchy; retain the approved landscape composition. */
+.home-nav { gap: 3%; }
+.home-nav nav { margin-right: auto; }
+.home-search { width: 22%; max-width: 310px; border-color: #dce0e366; background: #ffffff30; border-radius: 24px; }
+.home-copy { top: 18%; }
+.home-eyebrow { font-size: 9px; letter-spacing: 2.6px; margin-bottom: 28px; }
+.home-copy h1 { font-weight: 600; line-height: 1.12; letter-spacing: -1.7px; margin-bottom: 23px; }
+.home-description { font-size: 14px; line-height: 1.7; }
+.hero-actions { margin-top: 32px; }
+.ruas-home .primary-pill { font-size: 13px; padding: 16px 26px; gap: 38px; }
+.ruas-home:not(.map-view) .map-controls,
+.ruas-home:not(.map-view) .map-scale,
+.ruas-home:not(.map-view) .place:not(.yogya) { display: none; }
+.ruas-home:not(.map-view) .map-dot { width: 10px; height: 10px; opacity: .8; box-shadow: 0 1px 4px #0001; }
+.ruas-home .map-dot { transition: opacity .2s, box-shadow .2s; }
+.ruas-home .map-dot:focus-visible { outline-offset: 6px; }
+.place.yogya { font-size: 17px; letter-spacing: .2px; }
+.bottom-cards { left: auto; right: 7%; bottom: 7%; width: min(550px, 47%); height: auto; }
+.health-card { width: 100%; gap: 24px; padding: 24px 28px; border-radius: 26px; border: 1px solid #ffffff66; box-shadow: 0 15px 55px #20313c08; }
+.health-ring { width: 88px; min-width: 88px; }
+.health-ring circle { stroke-width: 5; }
+.health-ring circle.progress { stroke-dasharray: 244.3 339.3; }
+.health-ring strong { font-size: 29px; letter-spacing: -1px; }
+.health-ring span { font-size: 9px; }
+.health-copy { flex: 1; }
+.health-copy h2 { font-size: 14px; white-space: normal; font-weight: 500; line-height: 1.4; }
+.health-copy p { font-size: 11px; margin-bottom: 0; }
+.health-copy .summary-location { font-size: 9px; letter-spacing: 2px; margin-bottom: 10px; }
+.ruas-home .summary-link { display: grid; place-items: center; width: 32px; height: 40px; flex-shrink: 0; color: var(--muted); }
+.legend { margin-top: 14px; flex-wrap: wrap; }
+.demo-label { font-size: 9px; right: 7%; bottom: 2.6%; }
+.night .health-card { border-color: #74818e22; box-shadow: 0 15px 55px #0002; }
+@media (max-width: 1250px) {
+  .home-nav nav { margin-right: auto; }
+  .bottom-cards { left: auto; right: 5%; width: 49%; height: auto; }
+  .health-card { padding: 20px; gap: 16px; }
+  .health-copy h2 { font-size: 13px; }
+}
+@media (max-width: 800px) {
+  .ruas-home { min-height: 920px; }
+  .home-search { max-width: none; width: 100%; }
+  .home-copy { top: 200px; padding: 22px; }
+  .home-eyebrow { margin-bottom: 18px; font-size: 8px; letter-spacing: 1.8px; }
+  .home-copy h1 { font-size: clamp(27px, 6.2vw, 38px); line-height: 1.14; }
+  .home-description { font-size: 13px; max-width: 260px; }
+  .map-content { top: 460px; height: 250px; }
+  .bottom-cards { left: 5%; right: 5%; bottom: 65px; width: auto; }
+  .health-card { height: auto; min-height: 130px; padding: 20px; gap: 16px; }
+  .health-ring { width: 74px; min-width: 74px; }
+  .health-copy h2 { font-size: 12px; }
+  .health-copy p { font-size: 10px; }
+  .demo-label { bottom: 26px; }
+}
+@media (prefers-reduced-motion: reduce) {
+  .ruas-home .scene, .ruas-home .map-dot { transition: none; }
+}
