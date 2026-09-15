@@ -140,10 +140,17 @@ function Overview({
   return (
     <>
       <PageTitle
-        eyebrow="PANTAU. LAPORKAN. PERBAIKI."
-        title="Setiap ruas, satu langkah lebih baik."
-        description="Gambaran singkat dari laporan dan tindakan yang tercatat."
-        action={newReport}
+        eyebrow="KONDISI JALAN"
+        title="Ringkasan kondisi jalan"
+        description="Lihat prioritas laporan dan tindak lanjut yang tersimpan di workspace ini."
+        action={
+          <div className="rk-heading-actions">
+            {newReport}
+            <button className="rk-button rk-secondary" onClick={reload}>
+              Perbarui data
+            </button>
+          </div>
+        }
       />
       <Metrics items={items} />
       {!items.length ? (
@@ -164,18 +171,6 @@ function Overview({
           <IncidentTable items={priority} />
         </>
       )}
-      <div className="rk-overview-foot">
-        <div>
-          <h2>Data yang jelas. Keputusan yang terarah.</h2>
-          <p>
-            Gunakan peta untuk lokasi, insiden untuk bukti, dan perbaikan untuk
-            tindak lanjut.
-          </p>
-        </div>
-        <button className="rk-button rk-secondary" onClick={reload}>
-          Perbarui data ↻
-        </button>
-      </div>
     </>
   );
 }

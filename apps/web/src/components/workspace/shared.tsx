@@ -48,7 +48,7 @@ export function LoadState({
   reload: () => void;
 }) {
   return (
-    <div className="rk-empty" role={error ? "alert" : "status"}>
+    <div className="rk-empty rk-empty-status" role={error ? "alert" : "status"}>
       <span className="rk-kicker">{error ? "KONEKSI" : "SEBENTAR"}</span>
       <h2>{error ? "Data belum bisa dimuat" : "Memuat workspace…"}</h2>
       <p>{error ?? "Mengambil data tersimpan."}</p>
@@ -71,11 +71,14 @@ export function Empty({
 }) {
   return (
     <div className="rk-empty">
-      <span className="rk-empty-symbol" aria-hidden="true">
-        ↗
+      <span className="rk-empty-index" aria-hidden="true">
+        00
       </span>
-      <h2>{title}</h2>
-      <p>{description}</p>
+      <div className="rk-empty-copy">
+        <p className="rk-kicker">BELUM ADA DATA</p>
+        <h2>{title}</h2>
+        <p>{description}</p>
+      </div>
       {action && (
         <Link className="rk-button" href="/incidents/new">
           Buat laporan pertama
