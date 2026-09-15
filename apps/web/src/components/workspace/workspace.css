@@ -1768,3 +1768,134 @@
     margin: 18mm;
   }
 }
+
+/* Editorial workspace pass: quieter surfaces, authored navigation, and a
+   deliberate responsive collapse. These overrides keep the existing data
+   flows intact while replacing template-like chrome. */
+.rk-app {
+  --rk-bg: #f3f5f1;
+  --rk-surface: #fbfcf9;
+  --rk-ink: #142628;
+  --rk-muted: #5d6c6f;
+  --rk-line: #d6dfdb;
+  --rk-accent: #285f51;
+  --rk-soft: #e6efea;
+  --rk-danger: #a7442f;
+  --rk-radius: 8px;
+  font-family: var(--font-geist-sans), "Helvetica Neue", sans-serif;
+  font-size: 16px;
+}
+.rk-app.rk-dark {
+  --rk-bg: #0f1b1e;
+  --rk-surface: #17282c;
+  --rk-ink: #e8efed;
+  --rk-muted: #a9b8b9;
+  --rk-line: #35484b;
+  --rk-accent: #b4d9c9;
+  --rk-soft: #223a3d;
+  --rk-danger: #ffad96;
+}
+.rk-sidebar {
+  background: var(--rk-surface);
+  padding-top: 28px;
+}
+.rk-sidebar-head {
+  display: flex;
+  align-items: flex-start;
+  justify-content: space-between;
+  gap: 12px;
+}
+.rk-sidebar nav {
+  gap: 0;
+}
+.rk-nav-group + .rk-nav-group {
+  margin-top: 20px;
+  padding-top: 18px;
+  border-top: 1px solid var(--rk-line);
+}
+.rk-sidebar .rk-nav-label {
+  padding: 0 14px 8px;
+  margin: 0 !important;
+  font-size: 9px !important;
+  letter-spacing: 1.8px;
+}
+.rk-sidebar nav a {
+  gap: 12px;
+  min-height: 44px;
+  padding: 10px 14px;
+  border-radius: 6px;
+  font-size: 14px;
+}
+.rk-sidebar nav a > svg {
+  width: 18px;
+  height: 18px;
+  flex: 0 0 18px;
+  color: currentColor;
+}
+.rk-sidebar nav a.is-active {
+  background: var(--rk-ink);
+  color: var(--rk-surface);
+}
+.rk-sidebar nav a.is-active:hover {
+  color: var(--rk-surface);
+}
+.rk-mobile-menu {
+  display: none;
+  align-items: center;
+  justify-content: center;
+  gap: 7px;
+  min-height: 42px;
+  padding: 0 12px !important;
+  border: 1px solid var(--rk-line) !important;
+  border-radius: 6px !important;
+  color: var(--rk-ink) !important;
+  font-size: 12px !important;
+}
+.rk-mobile-menu svg {
+  width: 17px;
+  height: 17px;
+}
+.rk-icon-button svg {
+  width: 19px;
+  height: 19px;
+}
+.rk-main {
+  padding-top: 52px;
+}
+.rk-page-heading h1 {
+  letter-spacing: -1.8px;
+}
+
+@media (max-width: 850px) {
+  .rk-sidebar {
+    padding: 14px 20px;
+  }
+  .rk-sidebar-head {
+    align-items: center;
+  }
+  .rk-mobile-menu {
+    display: inline-flex;
+  }
+  .rk-sidebar nav {
+    display: none;
+    margin-top: 20px;
+    overflow: visible;
+  }
+  .rk-sidebar.is-open nav {
+    display: flex;
+    flex-direction: column;
+  }
+  .rk-nav-group + .rk-nav-group {
+    margin-top: 14px;
+    padding-top: 14px;
+  }
+  .rk-sidebar .rk-nav-label {
+    padding-left: 10px;
+  }
+  .rk-sidebar nav a {
+    padding-left: 10px;
+  }
+  .rk-main {
+    padding-top: 34px;
+  }
+}
