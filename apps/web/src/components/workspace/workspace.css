@@ -1805,6 +1805,18 @@
   justify-content: space-between;
   gap: 12px;
 }
+.rk-brand,
+.rk-local-profile,
+.rk-back {
+  min-height: 44px;
+}
+.rk-local-profile {
+  min-width: 44px;
+}
+.rk-form-actions .rk-text-button {
+  min-width: 44px;
+  justify-content: center;
+}
 .rk-sidebar nav {
   gap: 0;
 }
@@ -1844,7 +1856,7 @@
   align-items: center;
   justify-content: center;
   gap: 7px;
-  min-height: 42px;
+  min-height: 44px;
   padding: 0 12px !important;
   border: 1px solid var(--rk-line) !important;
   border-radius: 6px !important;
