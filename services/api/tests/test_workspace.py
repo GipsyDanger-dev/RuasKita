@@ -162,6 +162,8 @@ class WorkspaceTests(unittest.TestCase):
             source="ai",
             model_version="RuasVision v0.3",
             location_confidence=0.91,
+            road_segment_id="segment-uji-01",
+            road_match_confidence=0.97,
         )
         response = self.client.post("/v1/incidents", json=body)
         self.assertEqual(response.status_code, 201, response.text)
@@ -169,6 +171,38 @@ class WorkspaceTests(unittest.TestCase):
         self.assertEqual(saved["source"], "ai")
         self.assertEqual(saved["model_version"], "RuasVision v0.3")
         self.assertEqual(saved["location_confidence"], 0.91)
+        self.assertEqual(saved["road_segment_id"], "segment-uji-01")
+        self.assertEqual(saved["road_match_confidence"], 0.97)
+
+    def test_duplicate_candidates_explain_segment_match(self):
+        body = {
+            "request_id": str(uuid.uuid4()),
+            "road": "Jl. Segment Metadata",
+            "latitude": -7.81,
+            "longitude": 110.39,
+            "severity": "medium",
+            "notes": "Segmen jalan perlu ditinjau ulang",
+            "contributor": "Penguji metadata",
+            "evidence_id": self.evidence("blue"),
+            "road_segment_id": "segment-metadata-01",
+        }
+        created = self.client.post("/v1/incidents", json=body)
+        self.assertEqual(created.status_code, 201, created.text)
+        item = created.json()
+        response = self.client.post(
+            "/v1/incidents/duplicate-candidates",
+            json={
+                "road": body["road"],
+                "latitude": body["latitude"],
+                "longitude": body["longitude"],
+                "radius_meters": 50,
+                "road_segment_id": body["road_segment_id"],
+            },
+        )
+        self.assertEqual(response.status_code, 200, response.text)
+        candidate = next(candidate for candidate in response.json()["candidates"] if candidate["incident_id"] == item["id"])
+        self.assertTrue(candidate["road_segment_match"])
+        self.assertIn("Road segment sama", candidate["reasons"])
 
     def test_observation_stays_in_one_incident(self):
         item, _ = self.create()

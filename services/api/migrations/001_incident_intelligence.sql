@@ -7,12 +7,14 @@ CREATE TABLE IF NOT EXISTS incidents (
     id TEXT PRIMARY KEY,
     road TEXT NOT NULL,
     road_normalized TEXT NOT NULL,
+    road_segment_id TEXT,
     location GEOGRAPHY(Point, 4326) NOT NULL,
     severity TEXT NOT NULL CHECK (severity IN ('low', 'medium', 'high')),
     status TEXT NOT NULL CHECK (status IN ('candidate', 'verified', 'assigned', 'in_repair', 'recheck', 'resolved')),
     source TEXT NOT NULL CHECK (source IN ('manual', 'ai', 'imported')),
     model_version TEXT,
     location_confidence DOUBLE PRECISION CHECK (location_confidence IS NULL OR location_confidence BETWEEN 0 AND 1),
+    road_match_confidence DOUBLE PRECISION CHECK (road_match_confidence IS NULL OR road_match_confidence BETWEEN 0 AND 1),
     assignee TEXT NOT NULL DEFAULT '',
     notes TEXT NOT NULL,
     contributor TEXT NOT NULL,
@@ -25,6 +27,8 @@ CREATE INDEX IF NOT EXISTS incidents_location_gix
     ON incidents USING GIST (location);
 CREATE INDEX IF NOT EXISTS incidents_road_normalized_idx
     ON incidents (road_normalized);
+CREATE INDEX IF NOT EXISTS incidents_road_segment_idx
+    ON incidents (road_segment_id);
 CREATE INDEX IF NOT EXISTS incidents_status_idx
     ON incidents (status);
 

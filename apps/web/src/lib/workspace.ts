@@ -35,6 +35,8 @@ export type Incident = {
   notes: string;
   contributor: string;
   road_normalized?: string;
+  road_segment_id?: string | null;
+  road_match_confidence?: number | null;
   source?: ObservationSource;
   model_version?: string | null;
   location_confidence?: number | null;

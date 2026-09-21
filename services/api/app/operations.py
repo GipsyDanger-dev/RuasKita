@@ -65,6 +65,8 @@ class IncidentInput(StrictInput):
     source: Source = "manual"
     model_version: str | None = Field(default=None, max_length=100)
     location_confidence: float | None = Field(default=None, ge=0, le=1)
+    road_segment_id: str | None = Field(default=None, max_length=100)
+    road_match_confidence: float | None = Field(default=None, ge=0, le=1)
 
 
 class TransitionInput(StrictInput):
@@ -90,6 +92,7 @@ class DuplicateCandidateInput(StrictInput):
     longitude: float = Field(ge=-180, le=180)
     radius_meters: float = Field(default=75, ge=10, le=1000)
     exclude_incident_id: str | None = Field(default=None, max_length=100)
+    road_segment_id: str | None = Field(default=None, max_length=100)
 
 
 @router.post("/evidence", status_code=201)
@@ -148,6 +151,7 @@ def list_duplicate_candidates(body: DuplicateCandidateInput):
                 latitude=body.latitude,
                 longitude=body.longitude,
                 radius_meters=body.radius_meters,
+                road_segment_id=body.road_segment_id,
             )
         ]
         if candidate is not None
@@ -189,6 +193,8 @@ def create_incident(body: IncidentInput):
                 "road_normalized": normalize_road_name(body.road),
                 "source": body.source, "model_version": body.model_version,
                 "location_confidence": body.location_confidence,
+                "road_segment_id": body.road_segment_id,
+                "road_match_confidence": body.road_match_confidence,
                 "status": "candidate", "assignee": "", "created_at": stamp, "updated_at": stamp,
                 "revision": 1, "observations": [observation],
                 "history": [{"status": "candidate", "note": body.notes, "at": stamp}]}

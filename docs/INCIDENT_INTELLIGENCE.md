@@ -13,13 +13,15 @@ review aid, not an automatic incident merge and not a field-verification claim.
   "latitude": -7.79,
   "longitude": 110.37,
   "radius_meters": 75,
-  "exclude_incident_id": "optional"
+  "exclude_incident_id": "optional",
+  "road_segment_id": "optional"
 }
 ```
 
 The response contains candidates sorted by descending score. Every candidate
 includes the incident id, distance in meters, whether the normalized road names
-match, a score from `0` to `1`, and human-readable reasons.
+match, whether the road segment matches when supplied, a score from `0` to `1`,
+and human-readable reasons.
 
 The local implementation uses a great-circle distance plus normalized road-name
 comparison. It intentionally does not merge records. A future PostGIS adapter
@@ -33,6 +35,9 @@ New incidents preserve:
 - `source`: `manual`, `ai`, or `imported`;
 - `model_version`: optional model release identifier;
 - `location_confidence`: optional value from `0` to `1`;
+- `road_segment_id`: optional external road-network segment identifier;
+- `road_match_confidence`: optional value from `0` to `1` supplied by the
+  road-matching pipeline;
 - `road_normalized`: stable comparison key for the entered road name.
 
 These fields make provenance explicit before authentication, road matching, and

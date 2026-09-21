@@ -47,6 +47,7 @@ def duplicate_candidate(
     latitude: float,
     longitude: float,
     radius_meters: float = 75.0,
+    road_segment_id: str | None = None,
 ) -> dict[str, Any] | None:
     """Score an existing incident as a possible duplicate.
 
@@ -67,11 +68,17 @@ def duplicate_candidate(
         str(existing.get("road", ""))
     )
     road_match = normalize_road_name(road) == existing_road_key
+    segment_match = bool(road_segment_id and existing.get("road_segment_id") == road_segment_id)
     distance_score = max(0.0, 1.0 - distance / radius_meters)
-    score = 0.65 * distance_score + (0.35 if road_match else 0.0)
+    if road_segment_id:
+        score = 0.5 * distance_score + (0.25 if road_match else 0.0) + (0.25 if segment_match else 0.0)
+    else:
+        score = 0.65 * distance_score + (0.35 if road_match else 0.0)
     reasons: list[str] = []
     if road_match:
         reasons.append("Nama ruas sama")
+    if segment_match:
+        reasons.append("Road segment sama")
     if distance <= 25:
         reasons.append("Koordinat sangat berdekatan")
     else:
@@ -84,6 +91,7 @@ def duplicate_candidate(
         "score": round(score, 4),
         "distance_meters": round(distance, 2),
         "road_match": road_match,
+        "road_segment_match": segment_match,
         "reasons": reasons,
         "status": existing.get("status"),
         "severity": existing.get("severity"),
