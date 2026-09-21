@@ -19,6 +19,7 @@ from .storage import database
 router = APIRouter(prefix="/v1")
 MAX_UPLOAD = 10 * 1024 * 1024
 Status = Literal["candidate", "verified", "assigned", "in_repair", "recheck", "resolved"]
+Severity = Literal["low", "medium", "high"]
 TRANSITIONS = {
     "candidate": ["verified"], "verified": ["assigned"],
     "assigned": ["in_repair"], "in_repair": ["recheck"],
@@ -58,7 +59,7 @@ class IncidentInput(StrictInput):
     road: str = Field(min_length=3, max_length=150)
     latitude: float = Field(ge=-90, le=90)
     longitude: float = Field(ge=-180, le=180)
-    severity: Literal["low", "medium", "high"]
+    severity: Severity
     notes: str = Field(min_length=5, max_length=3000)
     contributor: str = Field(min_length=2, max_length=100)
     evidence_id: str
@@ -93,6 +94,22 @@ class DuplicateCandidateInput(StrictInput):
     radius_meters: float = Field(default=75, ge=10, le=1000)
     exclude_incident_id: str | None = Field(default=None, max_length=100)
     road_segment_id: str | None = Field(default=None, max_length=100)
+
+
+class DuplicateCandidate(StrictInput):
+    incident_id: str
+    score: float = Field(ge=0, le=1)
+    distance_meters: float = Field(ge=0)
+    road_match: bool
+    road_segment_match: bool
+    reasons: list[str]
+    status: Status | None = None
+    severity: Severity | None = None
+
+
+class DuplicateCandidatesResponse(StrictInput):
+    radius_meters: float = Field(ge=10, le=1000)
+    candidates: list[DuplicateCandidate]
 
 
 @router.post("/evidence", status_code=201)
@@ -133,7 +150,7 @@ def list_incidents():
         return [json.loads(row[0]) for row in db.execute("SELECT payload FROM incidents ORDER BY rowid DESC")]
 
 
-@router.post("/incidents/duplicate-candidates")
+@router.post("/incidents/duplicate-candidates", response_model=DuplicateCandidatesResponse)
 def list_duplicate_candidates(body: DuplicateCandidateInput):
     with database() as db:
         incidents = [

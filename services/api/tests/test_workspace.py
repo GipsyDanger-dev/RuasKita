@@ -119,6 +119,11 @@ class WorkspaceTests(unittest.TestCase):
             self.assertIn(field, incident_fields)
         candidate_fields = schema["components"]["schemas"]["DuplicateCandidateInput"]["properties"]
         self.assertIn("road_segment_id", candidate_fields)
+        duplicate_response = paths["/v1/incidents/duplicate-candidates"]["post"]["responses"]["200"]
+        self.assertEqual(
+            duplicate_response["content"]["application/json"]["schema"]["$ref"],
+            "#/components/schemas/DuplicateCandidatesResponse",
+        )
 
     def test_local_security_boundary_is_explicit(self):
         self.assertTrue(is_loopback_host("127.0.0.1"))
