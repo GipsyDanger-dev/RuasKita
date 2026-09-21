@@ -107,6 +107,19 @@ class WorkspaceTests(unittest.TestCase):
         self.assertEqual(readiness.json()["status"], "ready")
         self.assertEqual(readiness.json()["manual_reporting"], True)
 
+    def test_versioned_openapi_contract_exposes_incident_intelligence_fields(self):
+        response = self.client.get("/openapi.json")
+        self.assertEqual(response.status_code, 200)
+        schema = response.json()
+        paths = schema["paths"]
+        for path in ("/v1/incidents", "/v1/incidents/duplicate-candidates", "/v1/incidents/{incident_id}/observations"):
+            self.assertIn(path, paths)
+        incident_fields = schema["components"]["schemas"]["IncidentInput"]["properties"]
+        for field in ("request_id", "source", "model_version", "location_confidence", "road_segment_id", "road_match_confidence"):
+            self.assertIn(field, incident_fields)
+        candidate_fields = schema["components"]["schemas"]["DuplicateCandidateInput"]["properties"]
+        self.assertIn("road_segment_id", candidate_fields)
+
     def test_local_security_boundary_is_explicit(self):
         self.assertTrue(is_loopback_host("127.0.0.1"))
         self.assertTrue(is_loopback_host("::1"))
