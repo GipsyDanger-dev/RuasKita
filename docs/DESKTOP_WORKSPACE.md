@@ -64,9 +64,15 @@ and Supabase remain the intended production architecture.
 
 Tables: `incidents` (versioned JSON aggregate), `evidence` (sanitized JPEG bytes and
 server-generated AI result), `reports` (immutable snapshot and canonical JSON hash).
+The SQLite adapter reports schema version `1` and is isolated behind
+`services/api/app/storage.py`; this is the migration seam for PostgreSQL/PostGIS.
 All SQL uses bound parameters. Read/modify/write transactions serialize concurrent
 updates. Revision conflicts return 409 instead of silently overwriting changes.
 Creation request UUIDs make retrying the same submission idempotent.
+New incidents also preserve source provenance, optional model release,
+location confidence, and a normalized road comparison key. The review-only
+`POST /v1/incidents/duplicate-candidates` endpoint uses those coordinates and
+road names to return explainable candidates without merging records.
 
 Photo uploads accept JPEG/PNG/WebP, max 10 MB and 25 megapixels. Photos are oriented,
 re-encoded as JPEG, stripped of EXIF, and limited to 2400px before storage/inference.

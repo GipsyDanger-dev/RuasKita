@@ -48,7 +48,14 @@ Date: 2026-09-15. Scope: local desktop vertical slice, before mobile and field v
   long road names at 320, 375, 768, 1024, 1100, 1280 and 1440px.
 - Removed the development badge that covered navigation during local review.
 
-## Next integration sprint (not completed by this slice)
+## Integration sprint status
+
+The first foundation slice is now in progress: incident provenance fields,
+schema versioning, a storage adapter seam, an explainable duplicate-candidate
+endpoint, contract documentation, and CI checks are present. Automatic merges,
+road association, and production storage remain intentionally incomplete.
+
+## Remaining integration sprint
 
 1. Replace local-only access with Supabase Auth/RBAC and migrate persistence to
    PostgreSQL/PostGIS plus private cloud evidence storage.

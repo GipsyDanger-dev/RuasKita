@@ -19,7 +19,8 @@ from fastapi.middleware.cors import CORSMiddleware
 os.environ.setdefault("YOLO_AUTOINSTALL", "false")
 from ultralytics import YOLO
 from fastapi.responses import JSONResponse
-from .operations import router, database, MAX_UPLOAD
+from .operations import router, MAX_UPLOAD
+from .storage import database, storage_metadata
 
 
 PROJECT_ROOT = Path(__file__).resolve().parents[3]
@@ -75,8 +76,10 @@ async def local_workspace_only(request, call_next):
 @app.get("/health")
 def health() -> dict[str, Any]:
     manifest = app.state.manifest
+    storage = storage_metadata()
     return {"status": "ok", "engine": manifest["release"], "model_loaded": app.state.model is not None,
-            "mode": "local", "storage": "SQLite", "authentication": "not_configured"}
+            "mode": "local", "storage": str(storage["backend"]).upper(),
+            "storage_details": storage, "authentication": "not_configured"}
 
 
 @app.get("/v1/model")

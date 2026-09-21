@@ -4,12 +4,8 @@ from __future__ import annotations
 import hashlib
 import io
 import json
-import os
-import sqlite3
 import uuid
-from contextlib import contextmanager
 from datetime import UTC, date, datetime
-from pathlib import Path
 from typing import Literal
 
 from fastapi import APIRouter, File, HTTPException, UploadFile
@@ -18,6 +14,7 @@ from PIL import Image, ImageOps, UnidentifiedImageError
 from pydantic import BaseModel, ConfigDict, Field
 
 from .domain import duplicate_candidate, normalize_road_name
+from .storage import database
 
 router = APIRouter(prefix="/v1")
 MAX_UPLOAD = 10 * 1024 * 1024
@@ -27,45 +24,11 @@ TRANSITIONS = {
     "assigned": ["in_repair"], "in_repair": ["recheck"],
     "recheck": ["resolved", "in_repair"], "resolved": ["candidate"],
 }
-SCHEMA_VERSION = 1
 Source = Literal["manual", "ai", "imported"]
 
 
 def now():
     return datetime.now(UTC).isoformat()
-
-
-def database_path():
-    return Path(os.environ.get("RUASKITA_DB", str(Path(__file__).resolve().parents[1] / "data" / "workspace.sqlite3")))
-
-
-@contextmanager
-def database():
-    path = database_path()
-    path.parent.mkdir(parents=True, exist_ok=True)
-    db = sqlite3.connect(path, timeout=15)
-    db.row_factory = sqlite3.Row
-    try:
-        current_version = db.execute("PRAGMA user_version").fetchone()[0]
-        if current_version > SCHEMA_VERSION:
-            raise RuntimeError(
-                f"Database schema {current_version} is newer than supported {SCHEMA_VERSION}."
-            )
-        db.executescript("""
-        CREATE TABLE IF NOT EXISTS incidents (id TEXT PRIMARY KEY, payload TEXT NOT NULL);
-        CREATE TABLE IF NOT EXISTS evidence (id TEXT PRIMARY KEY, image BLOB NOT NULL, analysis TEXT, created_at TEXT NOT NULL);
-        CREATE TABLE IF NOT EXISTS reports (id TEXT PRIMARY KEY, payload TEXT NOT NULL);
-        """)
-        if current_version < SCHEMA_VERSION:
-            db.execute(f"PRAGMA user_version = {SCHEMA_VERSION}")
-        db.execute("BEGIN IMMEDIATE")
-        yield db
-        db.commit()
-    except Exception:
-        db.rollback()
-        raise
-    finally:
-        db.close()
 
 
 def get_incident(db, incident_id):

@@ -11,6 +11,7 @@ from PIL import Image
 from fastapi.testclient import TestClient
 from services.api.app.domain import haversine_meters, normalize_road_name
 from services.api.app.main import app
+from services.api.app.storage import storage_metadata
 
 
 class WorkspaceTests(unittest.TestCase):
@@ -91,6 +92,14 @@ class WorkspaceTests(unittest.TestCase):
             0,
             places=6,
         )
+
+    def test_storage_metadata_is_explicitly_local(self):
+        metadata = storage_metadata()
+        self.assertEqual(metadata["backend"], "sqlite")
+        self.assertEqual(metadata["schema_version"], 1)
+        health = self.client.get("/health").json()
+        self.assertEqual(health["storage"], "SQLITE")
+        self.assertEqual(health["storage_details"]["schema_version"], 1)
 
     def test_duplicate_candidates_are_explainable_and_scored(self):
         item, _ = self.create()
