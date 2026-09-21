@@ -1,6 +1,7 @@
 """Isolated contract tests. Never touches the user's workspace database or trains a model."""
 import io
 import os
+import sqlite3
 import tempfile
 import unittest
 import uuid
@@ -12,7 +13,7 @@ from fastapi.testclient import TestClient
 from services.api.app.domain import haversine_meters, normalize_road_name
 from services.api.app.main import app
 from services.api.app.security import allowed_origins, is_loopback_host, origin_is_allowed
-from services.api.app.storage import storage_metadata
+from services.api.app.storage import database, storage_metadata
 
 
 class WorkspaceTests(unittest.TestCase):
@@ -106,6 +107,30 @@ class WorkspaceTests(unittest.TestCase):
         self.assertEqual(readiness.status_code, 200)
         self.assertEqual(readiness.json()["status"], "ready")
         self.assertEqual(readiness.json()["manual_reporting"], True)
+
+    def test_storage_transaction_rolls_back_failed_writes(self):
+        marker = "rollback-check"
+        with self.assertRaisesRegex(RuntimeError, "rollback"):
+            with database() as db:
+                db.execute("INSERT INTO incidents (id, payload) VALUES (?, ?)", (marker, "{}"))
+                raise RuntimeError("rollback")
+        with database() as db:
+            self.assertIsNone(db.execute("SELECT id FROM incidents WHERE id = ?", (marker,)).fetchone())
+
+    def test_storage_rejects_newer_schema_without_downgrade(self):
+        with tempfile.TemporaryDirectory(prefix="ruaskita-schema-") as folder:
+            path = Path(folder) / "schema.sqlite3"
+            with patch.dict(os.environ, {"RUASKITA_DB": str(path)}):
+                with database():
+                    pass
+            raw = sqlite3.connect(path)
+            raw.execute("PRAGMA user_version = 999")
+            raw.commit()
+            raw.close()
+            with patch.dict(os.environ, {"RUASKITA_DB": str(path)}):
+                with self.assertRaisesRegex(RuntimeError, "newer than supported"):
+                    with database():
+                        pass
 
     def test_versioned_openapi_contract_exposes_incident_intelligence_fields(self):
         response = self.client.get("/openapi.json")
