@@ -23,6 +23,32 @@ Open http://localhost:3000/dashboard. The existing approved home composition is
 retained at `/`, with its illustrative score explicitly labelled. Operational
 pages start empty; they never silently seed or mix demo incidents into real data.
 
+For a phone preview on the same private Wi-Fi, keep the API on loopback and run
+the web origin on the LAN interface:
+
+```powershell
+$env:NEXT_PUBLIC_API_URL = "/api"
+$env:RUASKITA_API_PROXY_TARGET = "http://127.0.0.1:8000"
+$env:RUASKITA_ALLOWED_DEV_ORIGINS = "<IP-KOMPUTER>"
+cd apps/web
+npm run dev -- --hostname 0.0.0.0 --port 3000
+```
+
+Open `http://<IP-KOMPUTER>:3000/dashboard` from the phone. For live camera/video,
+use HTTPS development and open
+`https://<IP-KOMPUTER>:3000/incidents/new`; a browser certificate warning is
+expected for a local self-signed certificate. This is a local preview only; if
+Windows Firewall does not show an allow dialog, run PowerShell as Administrator:
+
+```powershell
+New-NetFirewallRule -DisplayName "RuasKita LAN Preview 3000" `
+  -Direction Inbound -Action Allow -Protocol TCP -LocalPort 3000 `
+  -RemoteAddress LocalSubnet -Profile Private,Public
+```
+
+The API remains bound to `127.0.0.1` and is reached through the same-origin
+Next.js proxy.
+
 The API reads the frozen model manifest, verifies the checkpoint SHA-256 when the
 checkpoint is available, and then loads it.
 It uses CUDA when available, otherwise CPU. Missing checkpoint means analysis
@@ -107,11 +133,13 @@ automatically change status. UI resolution also asks the operator to confirm a
 manual review; none of these states certify field conditions.
 
 There is no public auth yet. The API rejects non-loopback clients and unapproved
-write origins. Keep both servers bound to localhost. Do not expose them through a
-reverse proxy: that would require authenticated identities, RBAC, CSRF/rate limits,
-signed evidence access, proper secrets management, and an operational security review.
-Default browser origins are localhost/127.0.0.1 port 3000; `RUASKITA_ORIGINS` can set
-an explicit comma-separated development allowlist.
+write origins. The optional phone preview exposes only the Next.js development
+server on a private LAN and keeps the API on loopback through the same-origin
+proxy. Do not expose either service to the public internet or deploy this preview
+as a reverse proxy: that would require authenticated identities, RBAC, CSRF/rate
+limits, signed evidence access, proper secrets management, and an operational
+security review. Default browser origins are localhost/127.0.0.1 port 3000;
+`RUASKITA_ORIGINS` can set an explicit comma-separated development allowlist.
 
 Snapshots deep-copy the incident data at generation time. SHA-256 is computed on
 canonical UTF-8 JSON (`sort_keys=True`, compact separators, non-ASCII retained).

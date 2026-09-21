@@ -23,12 +23,40 @@ npm run dev
 Buka `http://localhost:3000/dashboard`. API default adalah `http://127.0.0.1:8000`;
 ubah `NEXT_PUBLIC_API_URL` bila service berjalan di alamat lain.
 
+### Akses dari HP di Wi-Fi yang sama
+
+API tetap terikat ke loopback. Next.js dapat mem-proxy API pada origin web agar
+HP hanya perlu membuka satu port:
+
+```powershell
+$env:NEXT_PUBLIC_API_URL = "/api"
+$env:RUASKITA_API_PROXY_TARGET = "http://127.0.0.1:8000"
+$env:RUASKITA_ALLOWED_DEV_ORIGINS = "<IP-KOMPUTER>"
+npm run dev -- --hostname 0.0.0.0 --port 3000
+```
+
+Cari alamat IPv4 komputer dengan `ipconfig`, lalu buka
+`http://<IP-KOMPUTER>:3000/dashboard` dari HP pada Wi-Fi yang sama. Jika
+Windows Firewall meminta izin, izinkan Node.js pada jaringan **Private** saja.
+Untuk live camera/video, gunakan HTTPS development dan buka
+`https://<IP-KOMPUTER>:3000/incidents/new`; browser mungkin meminta konfirmasi
+sertifikat lokal sebelum izin kamera muncul.
+
+Jika Windows Firewall tidak menampilkan dialog izin, jalankan PowerShell sebagai
+Administrator dan batasi rule ke subnet lokal:
+
+```powershell
+New-NetFirewallRule -DisplayName "RuasKita LAN Preview 3000" `
+  -Direction Inbound -Action Allow -Protocol TCP -LocalPort 3000 `
+  -RemoteAddress LocalSubnet -Profile Private,Public
+```
+
 ## Batasan MVP
 
 - Data persisten lokal di SQLite. Supabase/Auth/RBAC produksi belum tersedia.
 - Road Health/GeoFusion/depth metrik tidak diklaim tersedia.
 - Laporan adalah snapshot internal + cetak, bukan PDF resmi terverifikasi.
-- Jangan ekspos API dan web ini ke jaringan publik sebelum hardening dan auth.
+- Jangan ekspos API atau web ini ke jaringan publik sebelum hardening dan auth.
 
 ## Verifikasi
 
