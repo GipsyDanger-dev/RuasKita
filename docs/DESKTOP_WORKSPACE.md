@@ -71,9 +71,12 @@ All SQL uses bound parameters. Read/modify/write transactions serialize concurre
 updates. Revision conflicts return 409 instead of silently overwriting changes.
 Creation request UUIDs make retrying the same submission idempotent.
 New incidents also preserve source provenance, optional model release,
-location confidence, and a normalized road comparison key. The review-only
-`POST /v1/incidents/duplicate-candidates` endpoint uses those coordinates and
-road names to return explainable candidates without merging records.
+location confidence, a normalized road comparison key, and optional
+`road_segment_id`/`road_match_confidence` metadata. The review-only
+`POST /v1/incidents/duplicate-candidates` endpoint uses those coordinates, road
+names, and an optional segment id to return explainable candidates without
+merging records. A road matcher is still deferred; segment values are trusted
+provenance from a future matching pipeline.
 
 Photo uploads accept JPEG/PNG/WebP, max 10 MB and 25 megapixels. Photos are oriented,
 re-encoded as JPEG, stripped of EXIF, and limited to 2400px before storage/inference.

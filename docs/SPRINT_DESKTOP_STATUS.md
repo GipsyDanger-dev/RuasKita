@@ -1,6 +1,6 @@
 # Goal — functional desktop workspace
 
-Date: 2026-09-15. Scope: local desktop vertical slice, before mobile and field validation.
+Date: 2026-09-21. Scope: local desktop vertical slice, before mobile and field validation.
 
 ## Delivered
 
@@ -20,8 +20,9 @@ Date: 2026-09-15. Scope: local desktop vertical slice, before mobile and field v
 
 ## Verification evidence
 
-- 18 API contract tests passed (isolated SQLite, model disabled).
-- 2 end-to-end browser tests passed, including the full local lifecycle,
+- 29 API contract tests passed (isolated SQLite, model disabled), including the
+  PostgreSQL/PostGIS migration contract checks.
+- 5 end-to-end browser tests passed, including the full local lifecycle,
   every module route, responsive overflow checks at 390px, theme persistence,
   snapshot export/print, and offline API retry.
 - Actual frozen RuasVision model tested separately through the browser: uploaded
