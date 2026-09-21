@@ -42,6 +42,10 @@ Untuk live camera/video, gunakan HTTPS development dan buka
 `https://<IP-KOMPUTER>:3000/incidents/new`; browser mungkin meminta konfirmasi
 sertifikat lokal sebelum izin kamera muncul.
 
+Sesi yang sedang berjalan di komputer ini sudah menggunakan HTTPS pada port
+3000. Dengan alamat Wi-Fi saat ini, URL kamera adalah
+`https://192.168.1.32:3000/incidents/new`.
+
 Jika Windows Firewall tidak menampilkan dialog izin, jalankan PowerShell sebagai
 Administrator dan batasi rule ke subnet lokal:
 

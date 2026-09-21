@@ -49,6 +49,11 @@ New-NetFirewallRule -DisplayName "RuasKita LAN Preview 3000" `
 The API remains bound to `127.0.0.1` and is reached through the same-origin
 Next.js proxy.
 
+The active session on the development computer uses HTTPS on port 3000. With
+the current Wi-Fi address, the live camera page is
+`https://192.168.1.32:3000/incidents/new`; accept the local certificate warning
+once before granting camera permission.
+
 The API reads the frozen model manifest, verifies the checkpoint SHA-256 when the
 checkpoint is available, and then loads it.
 It uses CUDA when available, otherwise CPU. Missing checkpoint means analysis
