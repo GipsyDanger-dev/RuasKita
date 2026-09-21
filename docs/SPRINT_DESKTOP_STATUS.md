@@ -20,7 +20,7 @@ Date: 2026-09-21. Scope: local desktop vertical slice, before mobile and field v
 
 ## Verification evidence
 
-- 33 API contract tests passed (isolated SQLite, model disabled), including the
+- 34 API contract tests passed (isolated SQLite, model disabled), including the
   PostgreSQL/PostGIS migration contract checks.
 - 5 end-to-end browser tests passed, including the full local lifecycle,
   every module route, responsive overflow checks at 390px, theme persistence,

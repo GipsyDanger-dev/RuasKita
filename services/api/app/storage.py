@@ -11,7 +11,7 @@ import os
 import sqlite3
 from contextlib import contextmanager
 from pathlib import Path
-from typing import Iterator
+from typing import Any, Iterator, Protocol
 
 SCHEMA_VERSION = 2
 
@@ -50,30 +50,58 @@ def _ensure_sqlite_schema(db: sqlite3.Connection) -> None:
         db.execute(f"PRAGMA user_version = {SCHEMA_VERSION}")
 
 
-@contextmanager
-def database() -> Iterator[sqlite3.Connection]:
-    """Open a serialized local transaction through the active storage adapter."""
+class StorageAdapter(Protocol):
+    """Minimal transaction seam shared by local and future database adapters."""
+
+    backend: str
+
+    def transaction(self) -> Iterator[Any]:
+        """Yield a transactional session and commit or roll it back."""
+
+
+class SQLiteStorageAdapter:
+    """SQLite implementation used by the offline desktop release."""
+
+    backend = "sqlite"
+
+    def __init__(self, path: Path):
+        self.path = path
+
+    @contextmanager
+    def transaction(self) -> Iterator[sqlite3.Connection]:
+        self.path.parent.mkdir(parents=True, exist_ok=True)
+        db = sqlite3.connect(self.path, timeout=15)
+        db.row_factory = sqlite3.Row
+        try:
+            _ensure_sqlite_schema(db)
+            db.execute("BEGIN IMMEDIATE")
+            yield db
+            db.commit()
+        except Exception:
+            db.rollback()
+            raise
+        finally:
+            db.close()
+
+
+def storage_adapter() -> StorageAdapter:
+    """Resolve the configured adapter without silently falling back."""
 
     backend = storage_backend()
-    if backend != "sqlite":
-        raise RuntimeError(
-            f"Storage backend '{backend}' is not configured in this local release. "
-            "Use RUASKITA_STORAGE_BACKEND=sqlite until the PostgreSQL adapter lands."
-        )
-    path = database_path()
-    path.parent.mkdir(parents=True, exist_ok=True)
-    db = sqlite3.connect(path, timeout=15)
-    db.row_factory = sqlite3.Row
-    try:
-        _ensure_sqlite_schema(db)
-        db.execute("BEGIN IMMEDIATE")
+    if backend == "sqlite":
+        return SQLiteStorageAdapter(database_path())
+    raise RuntimeError(
+        f"Storage backend '{backend}' is not configured in this local release. "
+        "Use RUASKITA_STORAGE_BACKEND=sqlite until the PostgreSQL adapter lands."
+    )
+
+
+@contextmanager
+def database() -> Iterator[Any]:
+    """Open a serialized local transaction through the active storage adapter."""
+
+    with storage_adapter().transaction() as db:
         yield db
-        db.commit()
-    except Exception:
-        db.rollback()
-        raise
-    finally:
-        db.close()
 
 
 def storage_metadata() -> dict[str, str | int]:

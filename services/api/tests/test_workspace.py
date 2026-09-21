@@ -13,7 +13,7 @@ from fastapi.testclient import TestClient
 from services.api.app.domain import haversine_meters, normalize_road_name
 from services.api.app.main import app
 from services.api.app.security import allowed_origins, is_loopback_host, origin_is_allowed
-from services.api.app.storage import database, storage_metadata
+from services.api.app.storage import database, storage_adapter, storage_metadata
 
 
 class WorkspaceTests(unittest.TestCase):
@@ -116,6 +116,11 @@ class WorkspaceTests(unittest.TestCase):
                 raise RuntimeError("rollback")
         with database() as db:
             self.assertIsNone(db.execute("SELECT id FROM incidents WHERE id = ?", (marker,)).fetchone())
+
+    def test_storage_adapter_rejects_unconfigured_backend(self):
+        with patch.dict(os.environ, {"RUASKITA_STORAGE_BACKEND": "postgres"}):
+            with self.assertRaisesRegex(RuntimeError, "not configured in this local release"):
+                storage_adapter()
 
     def test_storage_rejects_newer_schema_without_downgrade(self):
         with tempfile.TemporaryDirectory(prefix="ruaskita-schema-") as folder:

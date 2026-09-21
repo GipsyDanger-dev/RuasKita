@@ -14,6 +14,10 @@ aggregate tables are not a production geospatial or identity store.
 
 - Domain operations use `services/api/app/storage.py` for local connection and
   schema bootstrapping.
+- The module exposes a small `StorageAdapter` transaction protocol; the local
+  `SQLiteStorageAdapter` is selected explicitly by backend name, so a future
+  PostgreSQL/PostGIS implementation can replace the connection lifecycle
+  without changing route handlers.
 - `RUASKITA_STORAGE_BACKEND=sqlite` is the only configured backend in this
   release. Any other value reports `not_ready` instead of silently falling back.
 - The target normalized PostgreSQL/PostGIS schema is documented in
