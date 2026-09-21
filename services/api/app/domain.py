@@ -68,11 +68,13 @@ def duplicate_candidate(
         str(existing.get("road", ""))
     )
     road_match = normalize_road_name(road) == existing_road_key
-    segment_match = bool(road_segment_id and existing.get("road_segment_id") == road_segment_id)
+    segment_available = bool(road_segment_id and existing.get("road_segment_id"))
+    segment_match = bool(segment_available and existing.get("road_segment_id") == road_segment_id)
     distance_score = max(0.0, 1.0 - distance / radius_meters)
-    if road_segment_id:
+    if segment_available:
         score = 0.5 * distance_score + (0.25 if road_match else 0.0) + (0.25 if segment_match else 0.0)
     else:
+        # Legacy incidents without a segment remain comparable by road and distance.
         score = 0.65 * distance_score + (0.35 if road_match else 0.0)
     reasons: list[str] = []
     if road_match:

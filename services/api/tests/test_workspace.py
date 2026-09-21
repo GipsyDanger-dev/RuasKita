@@ -217,6 +217,22 @@ class WorkspaceTests(unittest.TestCase):
         self.assertTrue(candidate["road_segment_match"])
         self.assertIn("Road segment sama", candidate["reasons"])
 
+    def test_duplicate_candidates_do_not_penalize_legacy_incident_without_segment(self):
+        item, _ = self.create()
+        response = self.client.post(
+            "/v1/incidents/duplicate-candidates",
+            json={
+                "road": item["road"],
+                "latitude": item["latitude"],
+                "longitude": item["longitude"],
+                "road_segment_id": "segment-added-later",
+            },
+        )
+        self.assertEqual(response.status_code, 200, response.text)
+        candidate = next(candidate for candidate in response.json()["candidates"] if candidate["incident_id"] == item["id"])
+        self.assertFalse(candidate["road_segment_match"])
+        self.assertEqual(candidate["score"], 1.0)
+
     def test_observation_stays_in_one_incident(self):
         item, _ = self.create()
         body = {"revision": item["revision"], "evidence_id": self.evidence(), "notes": "Foto observasi tambahan", "contributor": "Penguji kedua"}
