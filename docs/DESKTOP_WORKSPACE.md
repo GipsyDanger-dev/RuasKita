@@ -65,7 +65,7 @@ and Supabase remain the intended production architecture.
 
 Tables: `incidents` (versioned JSON aggregate), `evidence` (sanitized JPEG bytes and
 server-generated AI result), `reports` (immutable snapshot and canonical JSON hash).
-The SQLite adapter reports schema version `1` and is isolated behind
+The SQLite adapter reports schema version `2` and is isolated behind
 `services/api/app/storage.py`; this is the migration seam for PostgreSQL/PostGIS.
 All SQL uses bound parameters. Read/modify/write transactions serialize concurrent
 updates. Revision conflicts return 409 instead of silently overwriting changes.

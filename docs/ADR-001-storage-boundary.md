@@ -20,7 +20,9 @@ aggregate tables are not a production geospatial or identity store.
   `services/api/migrations/001_incident_intelligence.sql`.
 - The HTTP contract stays stable while the storage adapter changes.
 - Incident creation remains idempotent through a client `request_id`; future
-  adapters must preserve that invariant with a unique database constraint.
+  adapters must preserve that invariant with a unique database constraint. The
+  local schema now stores the key in `incident_idempotency` rather than relying
+  only on the incident id format.
 
 ## Consequences
 

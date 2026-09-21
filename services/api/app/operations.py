@@ -158,10 +158,21 @@ def list_duplicate_candidates(body: DuplicateCandidateInput):
 
 @router.post("/incidents", status_code=201)
 def create_incident(body: IncidentInput):
-    incident_id = "RK-" + str(body.request_id)
+    request_id = str(body.request_id)
+    incident_id = "RK-" + request_id
     with database() as db:
+        key = db.execute(
+            "SELECT incident_id FROM incident_idempotency WHERE request_id = ?",
+            (request_id,),
+        ).fetchone()
+        if key:
+            return get_incident(db, key[0])
         existing = db.execute("SELECT payload FROM incidents WHERE id = ?", (incident_id,)).fetchone()
         if existing:
+            db.execute(
+                "INSERT OR IGNORE INTO incident_idempotency (request_id, incident_id) VALUES (?, ?)",
+                (request_id, incident_id),
+            )
             return json.loads(existing[0])
         observation = require_evidence(db, body.evidence_id)
         stamp = now()
@@ -182,6 +193,10 @@ def create_incident(body: IncidentInput):
                 "revision": 1, "observations": [observation],
                 "history": [{"status": "candidate", "note": body.notes, "at": stamp}]}
         save_incident(db, item)
+        db.execute(
+            "INSERT INTO incident_idempotency (request_id, incident_id) VALUES (?, ?)",
+            (request_id, incident_id),
+        )
     return item
 
 
