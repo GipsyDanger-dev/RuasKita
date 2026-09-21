@@ -9,6 +9,7 @@ import unittest
 from pathlib import Path
 
 import yaml
+from ai_engine.scripts.validate_inference_contract import validate_payload
 
 
 ROOT = Path(__file__).resolve().parents[2]
@@ -57,3 +58,41 @@ class ReleaseContractTests(unittest.TestCase):
             },
         )
         self.assertEqual(self.contract["properties"]["engine"]["pattern"], r"^RuasVision v0\.[0-9]+$")
+
+    def test_validator_accepts_versioned_inference_payload(self):
+        validate_payload(
+            {
+                "generated_at": "2026-09-21T00:00:00+00:00",
+                "engine": "RuasVision v0.3",
+                "model_version": "RuasVision v0.3",
+                "model": "ai_engine/runs/example.pt",
+                "image": "road.png",
+                "image_shape": {"height": 100, "width": 120},
+                "confidence_threshold": 0.5,
+                "potholes": [
+                    {
+                        "class": "pothole",
+                        "confidence": 0.91,
+                        "bbox_xyxy": [1, 2, 30, 40],
+                        "polygon_xy": [[1, 2], [30, 2], [30, 40]],
+                    }
+                ],
+                "depth_policy": "relative only",
+            }
+        )
+
+    def test_validator_rejects_model_version_drift(self):
+        with self.assertRaisesRegex(SystemExit, "model version must match"):
+            validate_payload(
+                {
+                    "generated_at": "2026-09-21T00:00:00+00:00",
+                    "engine": "RuasVision v0.3",
+                    "model_version": "RuasVision v0.2",
+                    "model": "ai_engine/runs/example.pt",
+                    "image": "road.png",
+                    "image_shape": {"height": 100, "width": 120},
+                    "confidence_threshold": 0.5,
+                    "potholes": [],
+                    "depth_policy": "relative only",
+                }
+            )

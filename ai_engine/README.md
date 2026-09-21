@@ -126,7 +126,9 @@ confidence score, bounding box, and segmentation polygon for each pothole:
 python ai_engine\scripts\infer_segmentation.py path\to\road.jpg
 ```
 
-The JSON intentionally has no centimetre depth field. Metric depth requires a
+The JSON includes `model_version` matching the engine release so downstream
+incident provenance can trace the exact frozen model. It intentionally has no
+centimetre depth field. Metric depth requires a
 calibrated camera/RGB-D capture and ground-truth physical measurements.
 Its stable web integration format is defined in
 `contracts/ruasvision-inference-v0.2.schema.json`.

@@ -13,11 +13,9 @@ def require(condition: bool, message: str) -> None:
         raise SystemExit(f"Contract violation: {message}")
 
 
-def main() -> None:
-    parser = argparse.ArgumentParser()
-    parser.add_argument("response", type=Path)
-    args = parser.parse_args()
-    payload = json.loads(args.response.read_text(encoding="utf-8"))
+def validate_payload(payload: dict) -> None:
+    """Validate a decoded inference payload independently from the CLI."""
+
     required = {"generated_at", "engine", "model", "image", "image_shape", "confidence_threshold", "potholes", "depth_policy"}
     require(required <= payload.keys(), "missing required top-level field")
     require(re.fullmatch(r"RuasVision v0\.\d+", str(payload["engine"])) is not None, "invalid engine version")
@@ -32,6 +30,14 @@ def main() -> None:
         require(isinstance(pothole.get("bbox_xyxy"), list) and len(pothole["bbox_xyxy"]) == 4, f"pothole {index} has invalid bbox")
         polygon = pothole.get("polygon_xy")
         require(isinstance(polygon, list) and len(polygon) >= 3 and all(isinstance(point, list) and len(point) == 2 for point in polygon), f"pothole {index} has invalid polygon")
+
+
+def main() -> None:
+    parser = argparse.ArgumentParser()
+    parser.add_argument("response", type=Path)
+    args = parser.parse_args()
+    payload = json.loads(args.response.read_text(encoding="utf-8"))
+    validate_payload(payload)
     print(f"CONTRACT_VALID engine={payload['engine']} potholes={len(payload['potholes'])}")
 
 

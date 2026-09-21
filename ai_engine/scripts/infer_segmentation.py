@@ -12,6 +12,7 @@ from ultralytics import YOLO
 
 PROJECT_ROOT = Path(__file__).resolve().parents[2]
 DEFAULT_WEIGHTS = PROJECT_ROOT / "ai_engine" / "runs" / "yolo11n-seg-v0.3-comparison" / "weights" / "best.pt"
+ENGINE = "RuasVision v0.3"
 
 
 def main() -> None:
@@ -42,7 +43,8 @@ def main() -> None:
         })
     payload = {
         "generated_at": datetime.now(UTC).isoformat(),
-        "engine": "RuasVision v0.3",
+        "engine": ENGINE,
+        "model_version": ENGINE,
         "model": str(args.weights.relative_to(PROJECT_ROOT)),
         "image": str(args.image),
         "image_shape": {"height": result.orig_shape[0], "width": result.orig_shape[1]},
