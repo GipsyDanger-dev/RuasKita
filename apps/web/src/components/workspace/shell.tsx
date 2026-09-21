@@ -1,9 +1,10 @@
 "use client";
 import Link from "next/link";
 import { usePathname } from "next/navigation";
-import { useState } from "react";
+import { useEffect, useRef } from "react";
 import { useTheme } from "./theme";
 import "./workspace.css";
+import "./shell.css";
 
 type IconName =
   | "dashboard"
@@ -150,79 +151,151 @@ function NavIcon({ name }: { name: IconName }) {
 export default function Shell({ children }: { children: React.ReactNode }) {
   const pathname = usePathname();
   const { dark, toggle } = useTheme();
-  const [mobileOpen, setMobileOpen] = useState(false);
+  const menu = useRef<HTMLDialogElement>(null);
+  const menuButton = useRef<HTMLButtonElement>(null);
+  useEffect(() => {
+    const desktop = window.matchMedia("(min-width: 1100px)");
+    const closeOnDesktop = () => {
+      if (desktop.matches) menu.current?.close();
+    };
+    desktop.addEventListener("change", closeOnDesktop);
+    return () => desktop.removeEventListener("change", closeOnDesktop);
+  }, []);
   const active = navGroups
     .flatMap(({ links }) => links)
     .find(({ url }) => pathname.startsWith(`/${url}`));
+  const brand = (
+    <Link href="/" className="rk-brand">
+      <img
+        width="44"
+        height="44"
+        src={dark ? "/brand/dark.png" : "/brand/light.png"}
+        alt=""
+      />
+      <span className="rk-brand-copy">
+        <strong>
+          RuasKita<span>.</span>
+        </strong>
+        <small>Road intelligence</small>
+      </span>
+    </Link>
+  );
+  const navigation = (mobile = false) => (
+    <nav aria-label={mobile ? "Navigasi mobile" : "Navigasi workspace"}>
+      {navGroups.map((group) => (
+        <div className="rk-nav-group" key={group.label}>
+          <p className="rk-nav-label">{group.label}</p>
+          {group.links.map(({ url, label, icon }) => (
+            <Link
+              href={`/${url}`}
+              key={url}
+              className={active?.url === url ? "is-active" : ""}
+              aria-current={active?.url === url ? "page" : undefined}
+              onClick={() => menu.current?.close()}
+            >
+              <NavIcon name={icon} />
+              <span>{label}</span>
+            </Link>
+          ))}
+        </div>
+      ))}
+    </nav>
+  );
   return (
     <div className={`rk-app ${dark ? "rk-dark" : ""}`}>
       <a className="rk-skip" href="#workspace-main">
         Lewati navigasi
       </a>
-      <aside className={`rk-sidebar ${mobileOpen ? "is-open" : ""}`}>
+      <aside className="rk-sidebar">
         <div className="rk-sidebar-head">
-          <Link href="/" className="rk-brand">
-            <img src={dark ? "/brand/dark.png" : "/brand/light.png"} alt="" />
-            RuasKita<span>ROAD INTELLIGENCE</span>
-          </Link>
+          {brand}
           <button
+            ref={menuButton}
             className="rk-mobile-menu"
             type="button"
-            aria-expanded={mobileOpen}
-            aria-controls="workspace-navigation"
-            onClick={() => setMobileOpen((open) => !open)}
+            aria-haspopup="dialog"
+            aria-controls="workspace-menu"
+            onClick={() => menu.current?.showModal()}
           >
-            <NavIcon name={mobileOpen ? "close" : "menu"} />
-            <span>{mobileOpen ? "Tutup" : "Menu"}</span>
+            <NavIcon name="menu" />
+            <span>Menu</span>
           </button>
         </div>
-        <nav id="workspace-navigation" aria-label="Navigasi workspace">
-          {navGroups.map((group) => (
-            <div className="rk-nav-group" key={group.label}>
-              <p className="rk-nav-label">{group.label}</p>
-              {group.links.map(({ url, label, icon }) => {
-                const isActive = active?.url === url;
-                return (
-                  <Link
-                    href={`/${url}`}
-                    key={url}
-                    className={isActive ? "is-active" : ""}
-                    aria-current={isActive ? "page" : undefined}
-                    onClick={() => setMobileOpen(false)}
-                  >
-                    <NavIcon name={icon} />
-                    {label}
-                  </Link>
-                );
-              })}
-            </div>
-          ))}
-        </nav>
+        {navigation()}
         <div className="rk-sidebar-bottom">
-          <span className="rk-online-dot" /> Workspace lokal
-          <small>Data tersimpan di perangkat server.</small>
-          <Link href="/">← Kembali ke beranda</Link>
+          <Link href="/system">
+            <span className="rk-avatar">LK</span>
+            <span>
+              Operator lokal<small>Pengaturan workspace</small>
+            </span>
+            <span aria-hidden="true">↗</span>
+          </Link>
         </div>
       </aside>
+      <dialog
+        ref={menu}
+        id="workspace-menu"
+        className="rk-menu-dialog"
+        aria-label="Menu RuasKita"
+        onKeyDown={(event) => {
+          if (event.key !== "Tab") return;
+          const controls = event.currentTarget.querySelectorAll<HTMLElement>(
+            "a[href], button:not(:disabled)",
+          );
+          const first = controls[0];
+          const last = controls[controls.length - 1];
+          if (event.shiftKey && document.activeElement === first) {
+            event.preventDefault();
+            last?.focus();
+          } else if (!event.shiftKey && document.activeElement === last) {
+            event.preventDefault();
+            first?.focus();
+          }
+        }}
+        onClose={() => menuButton.current?.focus()}
+        onClick={(event) => {
+          if (event.target === event.currentTarget) menu.current?.close();
+        }}
+      >
+        <div className="rk-menu-content">
+          <div className="rk-menu-heading">
+            <strong>Jelajahi RuasKita</strong>
+            <button
+              type="button"
+              className="rk-icon-button"
+              aria-label="Tutup menu"
+              onClick={() => menu.current?.close()}
+            >
+              <NavIcon name="close" />
+            </button>
+          </div>
+          {navigation(true)}
+        </div>
+      </dialog>
       <div className="rk-body">
         <header className="rk-topbar">
           <span>
-            Workspace <span className="rk-slash">/</span>{" "}
+            <span className="rk-breadcrumb-root">
+              Workspace <span className="rk-slash">/</span>
+            </span>{" "}
             <strong>{active?.label}</strong>
           </span>
           <div>
+            <span className="rk-workspace-mode">Workspace lokal</span>
             <button
+              type="button"
               className="rk-icon-button"
               onClick={toggle}
               aria-label={dark ? "Gunakan tema terang" : "Gunakan tema gelap"}
             >
               <NavIcon name={dark ? "sun" : "moon"} />
             </button>
-            <Link className="rk-local-profile" href="/system">
-              <span>LK</span>
-              <div>
-                Operator lokal<small>Belum menggunakan akun</small>
-              </div>
+            <Link
+              className="rk-local-profile"
+              href="/system"
+              aria-label="Pengaturan operator lokal"
+            >
+              <span className="rk-avatar">LK</span>
             </Link>
           </div>
         </header>

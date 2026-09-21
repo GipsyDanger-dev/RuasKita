@@ -33,6 +33,21 @@ Date: 2026-09-15. Scope: local desktop vertical slice, before mobile and field v
 - Screenshots inspected for desktop light/dark, map, upload/AI overlay and mobile.
   Screenshot/PDF outputs are local test artifacts and intentionally not committed.
 
+## Dashboard redesign follow-up
+
+- Replaced the sparse overview with a geographic dashboard: linked incident counts,
+  interactive map, repair completion and a prioritized incident list.
+- Added an ink/lime visual direction, clearer typography and a normal-flow brand.
+  Consolidated competing shell styles and restored light print styles in dark mode.
+- Mobile navigation now opens in a modal drawer with keyboard focus cycling,
+  Escape dismissal, focus return and desktop-resize dismissal.
+- Counts open the corresponding active/severity/status filters. Empty records show
+  no completion percentage; the progress measure is resolved incidents, not road health.
+- Five browser E2E tests passed: the two original workflow/offline tests plus
+  count/filter/refresh correctness, keyboard navigation and responsive checks with
+  long road names at 320, 375, 768, 1024, 1100, 1280 and 1440px.
+- Removed the development badge that covered navigation during local review.
+
 ## Next integration sprint (not completed by this slice)
 
 1. Replace local-only access with Supabase Auth/RBAC and migrate persistence to

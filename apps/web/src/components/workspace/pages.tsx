@@ -24,6 +24,7 @@ import {
 import { NewIncident, IncidentDetail } from "./incident-editor";
 import { ReportsPage, ReportDetail } from "./reports";
 import { EvidenceImage } from "./evidence";
+import Dashboard from "./dashboard";
 const RoadMap = dynamic(() => import("./map"), {
   ssr: false,
   loading: () => <div className="rk-map-placeholder">Menyiapkan peta…</div>,
@@ -63,7 +64,7 @@ function DataPages({ section, filter }: { section: string; filter: Filter }) {
   const items = resource.data;
   switch (section) {
     case "dashboard":
-      return <Overview items={items} reload={resource.reload} />;
+      return <Dashboard items={items} reload={resource.reload} />;
     case "incidents":
       return <Incidents items={items} filter={filter} />;
     case "map":
@@ -121,68 +122,17 @@ function Metrics({ items }: { items: Incident[] }) {
     </div>
   );
 }
-function Overview({
-  items,
-  reload,
-}: {
-  items: Incident[];
-  reload: () => void;
-}) {
-  const priority = [...items]
-    .filter((i) => i.status !== "resolved")
-    .sort(
-      (a, b) =>
-        ({ high: 0, medium: 1, low: 2 })[a.severity] -
-          { high: 0, medium: 1, low: 2 }[b.severity] ||
-        a.created_at.localeCompare(b.created_at),
-    )
-    .slice(0, 5);
-  return (
-    <>
-      <PageTitle
-        eyebrow="KONDISI JALAN"
-        title="Ringkasan kondisi jalan"
-        description="Lihat prioritas laporan dan tindak lanjut yang tersimpan di workspace ini."
-        action={
-          <div className="rk-heading-actions">
-            {newReport}
-            <button className="rk-button rk-secondary" onClick={reload}>
-              Perbarui data
-            </button>
-          </div>
-        }
-      />
-      <Metrics items={items} />
-      {!items.length ? (
-        <Empty />
-      ) : (
-        <>
-          <div className="rk-section-title">
-            <div>
-              <p className="rk-kicker">FOKUS HARI INI</p>
-              <h2>Perlu ditindaklanjuti</h2>
-            </div>
-            <Link href="/incidents">Semua insiden ↗</Link>
-          </div>
-          <p className="rk-helper">
-            Urutan berdasarkan perhatian manual, lalu usia laporan. Belum
-            menggunakan Priority Engine.
-          </p>
-          <IncidentTable items={priority} />
-        </>
-      )}
-    </>
-  );
-}
 function Incidents({ items, filter }: { items: Incident[]; filter: Filter }) {
   const [query, setQuery] = useState(filter.road || "");
   const [status, setStatus] = useState(filter.status || "");
-  const [severity, setSeverity] = useState("");
+  const [severity, setSeverity] = useState(filter.severity || "");
+  const [activeOnly, setActiveOnly] = useState(filter.active === "true");
   const [page, setPage] = useState(1);
   const shown = items.filter(
     (i) =>
       (!status || i.status === status) &&
       (!severity || i.severity === severity) &&
+      (!activeOnly || i.status !== "resolved") &&
       (!filter.contributor ||
         i.observations.some((o) => o.contributor === filter.contributor)) &&
       `${i.road} ${i.id}`.toLowerCase().includes(query.toLowerCase()),
@@ -191,6 +141,7 @@ function Incidents({ items, filter }: { items: Incident[]; filter: Filter }) {
     setQuery("");
     setStatus("");
     setSeverity("");
+    setActiveOnly(false);
     setPage(1);
   }
   return (
@@ -250,6 +201,17 @@ function Incidents({ items, filter }: { items: Incident[]; filter: Filter }) {
               </option>
             ))}
           </select>
+        </label>
+        <label className="rk-check">
+          <input
+            type="checkbox"
+            checked={activeOnly}
+            onChange={(event) => {
+              setActiveOnly(event.target.checked);
+              setPage(1);
+            }}
+          />
+          Hanya insiden aktif
         </label>
         <button className="rk-text-button" onClick={reset}>
           Reset filter
