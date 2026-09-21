@@ -2,8 +2,11 @@ export const API = process.env.NEXT_PUBLIC_API_URL ?? "http://127.0.0.1:8000";
 export type Status =
   "candidate" | "verified" | "assigned" | "in_repair" | "recheck" | "resolved";
 export type Severity = "low" | "medium" | "high";
+export type ObservationSource = "manual" | "ai" | "imported";
 export type Analysis = {
   engine: string;
+  model?: string;
+  model_version?: string;
   generated_at: string;
   confidence_threshold: number;
   image_shape: { width: number; height: number };
@@ -16,6 +19,8 @@ export type Observation = {
   contributor: string;
   notes: string;
   kind: string;
+  source?: ObservationSource;
+  model_version?: string | null;
   analysis: Analysis | null;
 };
 export type Incident = {
@@ -28,6 +33,10 @@ export type Incident = {
   assignee: string;
   notes: string;
   contributor: string;
+  road_normalized?: string;
+  source?: ObservationSource;
+  model_version?: string | null;
+  location_confidence?: number | null;
   created_at: string;
   updated_at: string;
   revision: number;

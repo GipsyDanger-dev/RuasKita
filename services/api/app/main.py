@@ -139,6 +139,7 @@ def predict(raw: bytes, confidence: float = .5, filename: str = "evidence"):
         "generated_at": datetime.now(UTC).isoformat(),
         "engine": manifest["release"],
         "model": manifest["checkpoint"],
+        "model_version": manifest["release"],
         "image": filename,
         "image_shape": {"height": int(result.orig_shape[0]), "width": int(result.orig_shape[1])},
         "confidence_threshold": confidence,

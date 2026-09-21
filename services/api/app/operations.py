@@ -17,6 +17,8 @@ from fastapi.responses import Response
 from PIL import Image, ImageOps, UnidentifiedImageError
 from pydantic import BaseModel, ConfigDict, Field
 
+from .domain import duplicate_candidate, normalize_road_name
+
 router = APIRouter(prefix="/v1")
 MAX_UPLOAD = 10 * 1024 * 1024
 Status = Literal["candidate", "verified", "assigned", "in_repair", "recheck", "resolved"]
@@ -25,6 +27,8 @@ TRANSITIONS = {
     "assigned": ["in_repair"], "in_repair": ["recheck"],
     "recheck": ["resolved", "in_repair"], "resolved": ["candidate"],
 }
+SCHEMA_VERSION = 1
+Source = Literal["manual", "ai", "imported"]
 
 
 def now():
@@ -42,11 +46,18 @@ def database():
     db = sqlite3.connect(path, timeout=15)
     db.row_factory = sqlite3.Row
     try:
+        current_version = db.execute("PRAGMA user_version").fetchone()[0]
+        if current_version > SCHEMA_VERSION:
+            raise RuntimeError(
+                f"Database schema {current_version} is newer than supported {SCHEMA_VERSION}."
+            )
         db.executescript("""
         CREATE TABLE IF NOT EXISTS incidents (id TEXT PRIMARY KEY, payload TEXT NOT NULL);
         CREATE TABLE IF NOT EXISTS evidence (id TEXT PRIMARY KEY, image BLOB NOT NULL, analysis TEXT, created_at TEXT NOT NULL);
         CREATE TABLE IF NOT EXISTS reports (id TEXT PRIMARY KEY, payload TEXT NOT NULL);
         """)
+        if current_version < SCHEMA_VERSION:
+            db.execute(f"PRAGMA user_version = {SCHEMA_VERSION}")
         db.execute("BEGIN IMMEDIATE")
         yield db
         db.commit()
@@ -88,6 +99,9 @@ class IncidentInput(StrictInput):
     notes: str = Field(min_length=5, max_length=3000)
     contributor: str = Field(min_length=2, max_length=100)
     evidence_id: str
+    source: Source = "manual"
+    model_version: str | None = Field(default=None, max_length=100)
+    location_confidence: float | None = Field(default=None, ge=0, le=1)
 
 
 class TransitionInput(StrictInput):
@@ -103,6 +117,16 @@ class ObservationInput(StrictInput):
     evidence_id: str
     notes: str = Field(min_length=5, max_length=3000)
     contributor: str = Field(min_length=2, max_length=100)
+    source: Source = "manual"
+    model_version: str | None = Field(default=None, max_length=100)
+
+
+class DuplicateCandidateInput(StrictInput):
+    road: str = Field(min_length=3, max_length=150)
+    latitude: float = Field(ge=-90, le=90)
+    longitude: float = Field(ge=-180, le=180)
+    radius_meters: float = Field(default=75, ge=10, le=1000)
+    exclude_incident_id: str | None = Field(default=None, max_length=100)
 
 
 @router.post("/evidence", status_code=201)
@@ -143,6 +167,32 @@ def list_incidents():
         return [json.loads(row[0]) for row in db.execute("SELECT payload FROM incidents ORDER BY rowid DESC")]
 
 
+@router.post("/incidents/duplicate-candidates")
+def list_duplicate_candidates(body: DuplicateCandidateInput):
+    with database() as db:
+        incidents = [
+            json.loads(row[0])
+            for row in db.execute("SELECT payload FROM incidents ORDER BY rowid DESC")
+        ]
+    candidates = [
+        candidate
+        for incident in incidents
+        if incident["id"] != body.exclude_incident_id
+        for candidate in [
+            duplicate_candidate(
+                incident,
+                road=body.road,
+                latitude=body.latitude,
+                longitude=body.longitude,
+                radius_meters=body.radius_meters,
+            )
+        ]
+        if candidate is not None
+    ]
+    candidates.sort(key=lambda item: item["score"], reverse=True)
+    return {"radius_meters": body.radius_meters, "candidates": candidates}
+
+
 @router.post("/incidents", status_code=201)
 def create_incident(body: IncidentInput):
     incident_id = "RK-" + str(body.request_id)
@@ -152,9 +202,19 @@ def create_incident(body: IncidentInput):
             return json.loads(existing[0])
         observation = require_evidence(db, body.evidence_id)
         stamp = now()
-        observation.update(notes=body.notes, contributor=body.contributor, kind="initial", recorded_at=stamp)
+        observation.update(
+            notes=body.notes,
+            contributor=body.contributor,
+            kind="initial",
+            recorded_at=stamp,
+            source=body.source,
+            model_version=body.model_version,
+        )
         item = {"id": incident_id, "road": body.road, "latitude": body.latitude, "longitude": body.longitude,
                 "severity": body.severity, "notes": body.notes, "contributor": body.contributor,
+                "road_normalized": normalize_road_name(body.road),
+                "source": body.source, "model_version": body.model_version,
+                "location_confidence": body.location_confidence,
                 "status": "candidate", "assignee": "", "created_at": stamp, "updated_at": stamp,
                 "revision": 1, "observations": [observation],
                 "history": [{"status": "candidate", "note": body.notes, "at": stamp}]}
@@ -182,7 +242,13 @@ def transition_incident(incident_id: str, body: TransitionInput):
             if not body.evidence_id or body.evidence_id in [o["evidence_id"] for o in item["observations"]]:
                 raise HTTPException(422, "Unggah bukti baru setelah perbaikan.")
             observation = require_evidence(db, body.evidence_id)
-            observation.update(notes=body.note, contributor=item["assignee"], kind="repair", recorded_at=now())
+            observation.update(
+                notes=body.note,
+                contributor=item["assignee"],
+                kind="repair",
+                recorded_at=now(),
+                source="manual",
+            )
             item["observations"].append(observation)
         item.update(status=body.status, updated_at=now(), revision=item["revision"] + 1)
         if body.status == "assigned":
@@ -201,7 +267,14 @@ def add_observation(incident_id: str, body: ObservationInput):
         if body.evidence_id in [o["evidence_id"] for o in item["observations"]]:
             raise HTTPException(422, "Bukti ini sudah ada pada insiden.")
         observation = require_evidence(db, body.evidence_id)
-        observation.update(notes=body.notes, contributor=body.contributor, kind="observation", recorded_at=now())
+        observation.update(
+            notes=body.notes,
+            contributor=body.contributor,
+            kind="observation",
+            recorded_at=now(),
+            source=body.source,
+            model_version=body.model_version,
+        )
         item["observations"].append(observation)
         item.update(updated_at=now(), revision=item["revision"] + 1)
         item["history"].append({"status": item["status"], "note": f"Observasi tambahan: {body.notes}", "at": item["updated_at"]})

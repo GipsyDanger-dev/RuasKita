@@ -8,6 +8,7 @@
     "generated_at": { "type": "string", "format": "date-time" },
     "engine": { "type": "string", "pattern": "^RuasVision v0\\.[0-9]+$" },
     "model": { "type": "string" },
+    "model_version": { "type": "string" },
     "image": { "type": "string" },
     "image_shape": {
       "type": "object",

@@ -9,6 +9,7 @@ from unittest.mock import patch
 
 from PIL import Image
 from fastapi.testclient import TestClient
+from services.api.app.domain import haversine_meters, normalize_road_name
 from services.api.app.main import app
 
 
@@ -82,6 +83,63 @@ class WorkspaceTests(unittest.TestCase):
         response = self.client.post("/v1/incidents", json=body)
         self.assertEqual(response.json()["id"], item["id"])
         self.assertEqual(sum(i["id"] == item["id"] for i in self.client.get("/v1/incidents").json()), 1)
+
+    def test_domain_normalizes_roads_and_measures_distance(self):
+        self.assertEqual(normalize_road_name("  Jl. Uji   INTEGRASI "), "jl. uji integrasi")
+        self.assertAlmostEqual(
+            haversine_meters(-7.79, 110.37, -7.79, 110.37),
+            0,
+            places=6,
+        )
+
+    def test_duplicate_candidates_are_explainable_and_scored(self):
+        item, _ = self.create()
+        response = self.client.post(
+            "/v1/incidents/duplicate-candidates",
+            json={
+                "road": " jl. uji   integrasi ",
+                "latitude": -7.7901,
+                "longitude": 110.3701,
+                "radius_meters": 100,
+            },
+        )
+        self.assertEqual(response.status_code, 200, response.text)
+        payload = response.json()
+        self.assertEqual(payload["candidates"][0]["incident_id"], item["id"])
+        self.assertGreater(payload["candidates"][0]["score"], 0.89)
+        self.assertTrue(payload["candidates"][0]["reasons"])
+
+    def test_duplicate_candidates_can_exclude_current_incident(self):
+        item, _ = self.create()
+        response = self.client.post(
+            "/v1/incidents/duplicate-candidates",
+            json={
+                "road": item["road"],
+                "latitude": item["latitude"],
+                "longitude": item["longitude"],
+                "exclude_incident_id": item["id"],
+            },
+        )
+        self.assertEqual(response.status_code, 200, response.text)
+        self.assertFalse(
+            any(candidate["incident_id"] == item["id"] for candidate in response.json()["candidates"])
+        )
+
+    def test_incident_persists_source_and_model_metadata(self):
+        _, body = self.create()
+        body.update(
+            request_id=str(uuid.uuid4()),
+            evidence_id=self.evidence("green"),
+            source="ai",
+            model_version="RuasVision v0.3",
+            location_confidence=0.91,
+        )
+        response = self.client.post("/v1/incidents", json=body)
+        self.assertEqual(response.status_code, 201, response.text)
+        saved = response.json()
+        self.assertEqual(saved["source"], "ai")
+        self.assertEqual(saved["model_version"], "RuasVision v0.3")
+        self.assertEqual(saved["location_confidence"], 0.91)
 
     def test_observation_stays_in_one_incident(self):
         item, _ = self.create()

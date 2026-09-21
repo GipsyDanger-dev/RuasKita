@@ -21,6 +21,8 @@ def main() -> None:
     required = {"generated_at", "engine", "model", "image", "image_shape", "confidence_threshold", "potholes", "depth_policy"}
     require(required <= payload.keys(), "missing required top-level field")
     require(re.fullmatch(r"RuasVision v0\.\d+", str(payload["engine"])) is not None, "invalid engine version")
+    if "model_version" in payload:
+        require(payload["model_version"] == payload["engine"], "model version must match engine release")
     require(isinstance(payload["confidence_threshold"], (int, float)) and 0 <= payload["confidence_threshold"] <= 1, "invalid confidence threshold")
     require(all(isinstance(payload["image_shape"].get(key), int) and payload["image_shape"][key] > 0 for key in ("height", "width")), "invalid image shape")
     require(isinstance(payload["potholes"], list), "potholes must be an array")
