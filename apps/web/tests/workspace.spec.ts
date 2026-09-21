@@ -228,9 +228,31 @@ test("live camera samples a frame and renders the AI overlay", async ({
   page,
 }) => {
   await page.addInitScript(() => {
+    window.localStorage.setItem("ruaskita-track-stops", "0");
     Object.defineProperty(navigator, "mediaDevices", {
       configurable: true,
-      value: { getUserMedia: async () => new MediaStream() },
+      value: {
+        getUserMedia: async () => {
+          const stream = new MediaStream();
+          Object.defineProperty(stream, "getTracks", {
+            configurable: true,
+            value: () => [
+              {
+                stop: () => {
+                  const stops = Number(
+                    window.localStorage.getItem("ruaskita-track-stops") ?? "0",
+                  );
+                  window.localStorage.setItem(
+                    "ruaskita-track-stops",
+                    String(stops + 1),
+                  );
+                },
+              },
+            ],
+          });
+          return stream;
+        },
+      },
     });
     Object.defineProperty(HTMLVideoElement.prototype, "videoWidth", {
       configurable: true,
@@ -290,10 +312,12 @@ test("live camera samples a frame and renders the AI overlay", async ({
   await expect(
     page.locator(".rk-live-status").getByText(/Frame terakhir: 1 pothole/),
   ).toBeVisible({ timeout: 10000 });
+  expect(await page.evaluate(() => localStorage.getItem("ruaskita-track-stops"))).toBe("0");
   await expect(
     page.getByRole("img", { name: "1 area terdeteksi AI pada frame terakhir" }),
   ).toBeVisible();
   await page.getByRole("button", { name: "Hentikan scan" }).click();
+  expect(await page.evaluate(() => localStorage.getItem("ruaskita-track-stops"))).toBe("1");
   await page.getByRole("tab", { name: "File video" }).click();
   await page.getByLabel("Pilih video jalan").setInputFiles({
     name: "road.mp4",

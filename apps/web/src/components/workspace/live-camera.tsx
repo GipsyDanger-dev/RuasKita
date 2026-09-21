@@ -28,6 +28,7 @@ export default function LiveCamera({
   const timerRef = useRef<number | null>(null);
   const requestRef = useRef<AbortController | null>(null);
   const analyzeFrameRef = useRef<(() => void) | null>(null);
+  const cameraCancelRef = useRef<(() => void) | null>(null);
   const activeRef = useRef(false);
   const frameInFlightRef = useRef(false);
   const [open, setOpen] = useState(false);
@@ -66,6 +67,8 @@ export default function LiveCamera({
   const stopSession = useCallback(() => {
     activeRef.current = false;
     clearTimer();
+    cameraCancelRef.current?.();
+    cameraCancelRef.current = null;
     requestRef.current?.abort();
     requestRef.current = null;
     releaseMedia();
@@ -170,6 +173,11 @@ export default function LiveCamera({
     }
     setActive(false);
     setStarting(true);
+    let cancelled = false;
+    const cancelCameraStart = () => {
+      cancelled = true;
+    };
+    cameraCancelRef.current = cancelCameraStart;
     let timeoutId: number | undefined;
     try {
       const streamRequest = navigator.mediaDevices.getUserMedia({
@@ -181,7 +189,7 @@ export default function LiveCamera({
         },
       });
       streamRequest.then((stream) => {
-        if (!activeRef.current && !streamRef.current) {
+        if (cancelled) {
           stream.getTracks().forEach((track) => track.stop());
         }
       }).catch(() => {
@@ -197,6 +205,10 @@ export default function LiveCamera({
         }),
       ]);
       if (timeoutId) window.clearTimeout(timeoutId);
+      if (cancelled) {
+        stream.getTracks().forEach((track) => track.stop());
+        return;
+      }
       const video = videoRef.current;
       if (!video) {
         stream.getTracks().forEach((track) => track.stop());
@@ -208,6 +220,7 @@ export default function LiveCamera({
       video.muted = true;
       video.playsInline = true;
       await video.play();
+      if (cancelled) return;
       activeRef.current = true;
       setActive(true);
       scheduleFrame(0);
@@ -221,6 +234,9 @@ export default function LiveCamera({
       stopSession();
       setError(message);
     } finally {
+      if (cameraCancelRef.current === cancelCameraStart) {
+        cameraCancelRef.current = null;
+      }
       if (timeoutId) window.clearTimeout(timeoutId);
       setStarting(false);
     }
