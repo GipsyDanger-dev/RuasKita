@@ -1,6 +1,7 @@
 "use client";
 import { useState } from "react";
 import { Analysis, api, evidenceURL, upload } from "@/lib/workspace";
+import LiveCamera from "./live-camera";
 import { ErrorMessage } from "./shared";
 
 export function EvidenceImage({
@@ -111,6 +112,7 @@ export default function EvidenceInput({
           }}
         />
       </label>
+      <LiveCamera onCapture={(file) => void choose(file)} disabled={!!busy || disabled} />
       {id && <EvidenceImage id={id} analysis={result} />}
       {id && analyze && (
         <button

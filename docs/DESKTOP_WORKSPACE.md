@@ -38,8 +38,10 @@ returns HTTP 503; manual reporting remains available. No training is started.
 - `/roads`: grouping by reported road name, incident/evidence counts, linked list.
 - `/incidents`: search, severity/status filter, ten-row pagination.
 - `/incidents/new`: validated image upload, optional actual RuasVision analysis,
-  polygon overlay, map point selection or device GPS, manual severity, notes,
-  named contributor, persistent candidate creation.
+  polygon overlay, local live camera/video frame sampling, capture-to-evidence,
+  map point selection or device GPS, manual severity, notes, named contributor,
+  persistent candidate creation. Live sampling sends one JPEG frame at a time
+  to the local inference endpoint and never records a stream automatically.
 - `/incidents/:id`: metadata, image navigation, stored AI results, event history,
   guarded status transitions and additional observations on the same incident.
 - `/repairs`: stage board, search by road/assignee, optional resolved column;
@@ -80,8 +82,15 @@ provenance from a future matching pipeline.
 
 Photo uploads accept JPEG/PNG/WebP, max 10 MB and 25 megapixels. Photos are oriented,
 re-encoded as JPEG, stripped of EXIF, and limited to 2400px before storage/inference.
-Original photos are not retained. Face/plate blurring is **not implemented**; use
-non-identifying evidence locally and do not publish this storage.
+Original photos are not retained. Live camera/video frames are sampled in memory;
+only a frame explicitly captured by the operator enters the evidence upload flow.
+Face/plate blurring is **not implemented**; use non-identifying evidence locally and
+do not publish this storage.
+
+The live scan stage uses a dark, quiet frame so the source pixels and orange
+segmentation polygons remain legible. Source tabs and capture controls are the only
+accented actions; the panel has no decorative animation and reports permission,
+loading, inference, and API failure states explicitly.
 
 State machine:
 
@@ -141,9 +150,10 @@ still needed before public rollout.
 - GeoFusion, road-segment matching, automatic spatial/visual duplicate merging.
 - Calibrated severity, Road Health Score and automatic repair priority scoring.
 - Metric depth/dimensions; no centimetre estimate is emitted.
-- Street capture sequences, automated before/after judgement and privacy blur.
+- Continuous street capture sequences, automated before/after judgement and privacy blur.
 - Signed / QR-verifiable PDF report pipeline.
-- Mobile, edge/live capture, fleet workflows and field validation.
+- Mobile, fleet workflows and field validation. The local browser camera/video
+  sampler is available for operator testing, but is not a mobile or fleet pipeline.
 
 These are separate roadmap work, not functional placeholders disguised as complete
 features. The desktop slice is a runnable foundation for those next integrations.

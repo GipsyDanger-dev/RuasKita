@@ -10,6 +10,8 @@ Date: 2026-09-21. Scope: local desktop vertical slice, before mobile and field v
   contributors and system pages backed by persisted local records.
 - [x] Upload → optional real AI segmentation → coordinate selection → candidate
   incident → detail and map.
+- [x] Local live camera/video sampling with bounded frame cadence, polygon overlay,
+  permission/error states, and explicit capture into the evidence flow.
 - [x] Guarded repair transitions, responsible team, new repair evidence,
   local recheck, resolve and reopen.
 - [x] Observations/history linked to one incident instead of separate reports.

@@ -1,4 +1,5 @@
 import { test, expect } from "@playwright/test";
+import { Buffer } from "node:buffer";
 import path from "node:path";
 const photo = path.resolve(__dirname, "../public/brand/road-evidence.jpg");
 
@@ -195,4 +196,113 @@ test("offline API offers retry and never displays fabricated data", async ({
   await page.unroute("http://127.0.0.1:8800/v1/incidents");
   await page.getByRole("button", { name: "Coba lagi" }).click();
   await expect(page.locator(".rk-page-heading h1")).toBeVisible();
+});
+
+test("live camera explains a denied permission", async ({ page }) => {
+  await page.addInitScript(() => {
+    Object.defineProperty(navigator, "mediaDevices", {
+      configurable: true,
+      value: {
+        getUserMedia: async () => {
+          throw new DOMException("Permission denied", "NotAllowedError");
+        },
+      },
+    });
+  });
+  await page.goto("/incidents/new");
+  await page.getByRole("button", { name: "Buka live camera / video" }).click();
+  await page.getByRole("button", { name: "Mulai kamera" }).click();
+  await expect(
+    page.getByRole("alert").filter({
+      hasText: "Akses kamera ditolak. Izinkan kamera lalu coba lagi.",
+    }),
+  ).toBeVisible();
+  await page.getByRole("tab", { name: "File video" }).click();
+  await page.getByLabel("Pilih video jalan").setInputFiles(photo);
+  await expect(page.locator(".rk-main").getByRole("alert")).toContainText(
+    "File video tidak dikenali",
+  );
+});
+
+test("live camera samples a frame and renders the AI overlay", async ({
+  page,
+}) => {
+  await page.addInitScript(() => {
+    Object.defineProperty(navigator, "mediaDevices", {
+      configurable: true,
+      value: { getUserMedia: async () => new MediaStream() },
+    });
+    Object.defineProperty(HTMLVideoElement.prototype, "videoWidth", {
+      configurable: true,
+      get: () => 640,
+    });
+    Object.defineProperty(HTMLVideoElement.prototype, "videoHeight", {
+      configurable: true,
+      get: () => 360,
+    });
+    Object.defineProperty(HTMLVideoElement.prototype, "readyState", {
+      configurable: true,
+      get: () => 4,
+    });
+    Object.defineProperty(HTMLVideoElement.prototype, "play", {
+      configurable: true,
+      value: async () => undefined,
+    });
+    Object.defineProperty(CanvasRenderingContext2D.prototype, "drawImage", {
+      configurable: true,
+      value: () => undefined,
+    });
+    Object.defineProperty(HTMLCanvasElement.prototype, "toBlob", {
+      configurable: true,
+      value: (callback: BlobCallback) =>
+        callback(new Blob(["frame"], { type: "image/jpeg" })),
+    });
+  });
+  await page.route(
+    "http://127.0.0.1:8800/v1/inference/image*",
+    (route) =>
+      route.fulfill({
+        status: 200,
+        contentType: "application/json",
+        body: JSON.stringify({
+          engine: "RuasVision v0.3",
+          model_version: "RuasVision v0.3",
+          generated_at: new Date().toISOString(),
+          confidence_threshold: 0.5,
+          image_shape: { width: 640, height: 360 },
+          potholes: [
+            {
+              confidence: 0.82,
+              polygon_xy: [
+                [10, 10],
+                [80, 10],
+                [80, 70],
+                [10, 70],
+              ],
+            },
+          ],
+        }),
+      }),
+  );
+  await page.goto("/incidents/new");
+  await page.getByRole("button", { name: "Buka live camera / video" }).click();
+  await page.getByRole("button", { name: "Mulai kamera" }).click();
+  await expect(
+    page.locator(".rk-live-status").getByText(/Frame terakhir: 1 pothole/),
+  ).toBeVisible({ timeout: 10000 });
+  await expect(
+    page.getByRole("img", { name: "1 area terdeteksi AI pada frame terakhir" }),
+  ).toBeVisible();
+  await page.getByRole("button", { name: "Hentikan scan" }).click();
+  await page.getByRole("tab", { name: "File video" }).click();
+  await page.getByLabel("Pilih video jalan").setInputFiles({
+    name: "road.mp4",
+    mimeType: "video/mp4",
+    buffer: Buffer.from("test-video"),
+  });
+  await page.getByRole("button", { name: "Putar & scan video" }).click();
+  await expect(
+    page.locator(".rk-live-status").getByText(/Frame terakhir: 1 pothole/),
+  ).toBeVisible({ timeout: 10000 });
+  await page.getByRole("button", { name: "Hentikan scan" }).click();
 });
