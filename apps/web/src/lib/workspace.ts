@@ -25,6 +25,7 @@ export type Observation = {
 };
 export type Incident = {
   id: string;
+  request_id?: string;
   road: string;
   latitude: number;
   longitude: number;

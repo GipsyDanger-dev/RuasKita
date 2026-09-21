@@ -1,11 +1,11 @@
 {
     "schema_version": 2,
-    "commit": "cde9ebbcf8f0651af4686e627fa0a2a757e38d9e",
-    "indexed_at": "2026-09-21T01:44:50Z",
+    "commit": "c8bf6b0c8683a0a36d3a706639113265dea65d83",
+    "indexed_at": "2026-09-21T02:24:21Z",
     "project": "RuasKita",
-    "nodes": 678,
-    "edges": 1682,
-    "original_size": 2424832,
-    "compressed_size": 498373,
-    "compression_level": 9
+    "nodes": 838,
+    "edges": 1997,
+    "original_size": 3145728,
+    "compressed_size": 638980,
+    "compression_level": 3
 }

@@ -63,9 +63,10 @@ def duplicate_candidate(
     if distance > radius_meters:
         return None
 
-    road_match = normalize_road_name(road) == normalize_road_name(
+    existing_road_key = existing.get("road_normalized") or normalize_road_name(
         str(existing.get("road", ""))
     )
+    road_match = normalize_road_name(road) == existing_road_key
     distance_score = max(0.0, 1.0 - distance / radius_meters)
     score = 0.65 * distance_score + (0.35 if road_match else 0.0)
     reasons: list[str] = []

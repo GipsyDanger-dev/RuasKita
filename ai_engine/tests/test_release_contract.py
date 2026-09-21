@@ -3,6 +3,7 @@
 from __future__ import annotations
 
 import json
+import hashlib
 import re
 import unittest
 from pathlib import Path
@@ -25,6 +26,13 @@ class ReleaseContractTests(unittest.TestCase):
         self.assertEqual(self.manifest["status"], "frozen-offline-release")
         self.assertRegex(self.manifest["release"], r"^RuasVision v0\.\d+$")
         self.assertRegex(self.manifest["checkpoint_sha256"], r"^[0-9a-f]{64}$")
+
+    def test_available_checkpoint_matches_manifest(self):
+        checkpoint = ROOT / self.manifest["checkpoint"]
+        if not checkpoint.exists():
+            self.skipTest("frozen checkpoint is not present in this checkout")
+        digest = hashlib.sha256(checkpoint.read_bytes()).hexdigest()
+        self.assertEqual(digest, self.manifest["checkpoint_sha256"])
 
     def test_benchmark_values_are_bounded(self):
         metrics = self.manifest["test_metrics"]

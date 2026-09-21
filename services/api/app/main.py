@@ -4,6 +4,7 @@ from __future__ import annotations
 
 from contextlib import asynccontextmanager
 from datetime import UTC, datetime
+import hashlib
 from pathlib import Path
 from typing import Any
 import os
@@ -36,12 +37,27 @@ def release_manifest() -> dict[str, Any]:
     return manifest
 
 
+def checkpoint_sha256(path: Path) -> str:
+    digest = hashlib.sha256()
+    with path.open("rb") as checkpoint:
+        for chunk in iter(lambda: checkpoint.read(1024 * 1024), b""):
+            digest.update(chunk)
+    return digest.hexdigest()
+
+
 @asynccontextmanager
 async def lifespan(app: FastAPI):
     manifest = release_manifest()
     checkpoint = PROJECT_ROOT / str(manifest["checkpoint"])
     app.state.manifest = manifest
-    app.state.model = YOLO(str(checkpoint)) if checkpoint.exists() and os.getenv("RUASKITA_DISABLE_MODEL") != "1" else None
+    if checkpoint.exists() and os.getenv("RUASKITA_DISABLE_MODEL") != "1":
+        expected_hash = str(manifest.get("checkpoint_sha256", "")).lower()
+        actual_hash = checkpoint_sha256(checkpoint)
+        if actual_hash != expected_hash:
+            raise RuntimeError("RuasVision checkpoint hash does not match the frozen release manifest.")
+        app.state.model = YOLO(str(checkpoint))
+    else:
+        app.state.model = None
     app.state.inference_lock = threading.Lock()
     yield
 
@@ -80,6 +96,36 @@ def health() -> dict[str, Any]:
     return {"status": "ok", "engine": manifest["release"], "model_loaded": app.state.model is not None,
             "mode": "local", "storage": str(storage["backend"]).upper(),
             "storage_details": storage, "authentication": "not_configured"}
+
+
+@app.get("/ready", response_model=None)
+def readiness() -> dict[str, Any] | JSONResponse:
+    """Report whether the local API can serve manual reporting now.
+
+    AI inference is a separate capability: a missing checkpoint degrades
+    analysis to HTTP 503 while manual evidence and incident workflows remain
+    available.
+    """
+
+    try:
+        with database():
+            pass
+    except Exception as error:
+        return JSONResponse(
+            status_code=503,
+            content={
+                "status": "not_ready",
+                "reason": "storage_unavailable",
+                "detail": str(error),
+            },
+        )
+    return {
+        "status": "ready",
+        "manual_reporting": True,
+        "inference": "ready" if app.state.model is not None else "degraded",
+        "storage": storage_metadata(),
+        "authentication": "not_configured",
+    }
 
 
 @app.get("/v1/model")

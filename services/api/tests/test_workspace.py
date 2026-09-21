@@ -84,6 +84,7 @@ class WorkspaceTests(unittest.TestCase):
         item, body = self.create()
         response = self.client.post("/v1/incidents", json=body)
         self.assertEqual(response.json()["id"], item["id"])
+        self.assertEqual(response.json()["request_id"], body["request_id"])
         self.assertEqual(sum(i["id"] == item["id"] for i in self.client.get("/v1/incidents").json()), 1)
 
     def test_domain_normalizes_roads_and_measures_distance(self):
@@ -101,6 +102,10 @@ class WorkspaceTests(unittest.TestCase):
         health = self.client.get("/health").json()
         self.assertEqual(health["storage"], "SQLITE")
         self.assertEqual(health["storage_details"]["schema_version"], 1)
+        readiness = self.client.get("/ready")
+        self.assertEqual(readiness.status_code, 200)
+        self.assertEqual(readiness.json()["status"], "ready")
+        self.assertEqual(readiness.json()["manual_reporting"], True)
 
     def test_local_security_boundary_is_explicit(self):
         self.assertTrue(is_loopback_host("127.0.0.1"))
@@ -109,6 +114,12 @@ class WorkspaceTests(unittest.TestCase):
         self.assertIn("http://127.0.0.1:3000", allowed_origins())
         self.assertTrue(origin_is_allowed("http://127.0.0.1:3000"))
         self.assertFalse(origin_is_allowed("https://untrusted.example"))
+
+    def test_unconfigured_production_storage_is_not_reported_ready(self):
+        with patch.dict(os.environ, {"RUASKITA_STORAGE_BACKEND": "postgres"}):
+            response = self.client.get("/ready")
+        self.assertEqual(response.status_code, 503)
+        self.assertEqual(response.json()["reason"], "storage_unavailable")
 
     def test_duplicate_candidates_are_explainable_and_scored(self):
         item, _ = self.create()

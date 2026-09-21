@@ -173,7 +173,7 @@ def create_incident(body: IncidentInput):
             source=body.source,
             model_version=body.model_version,
         )
-        item = {"id": incident_id, "road": body.road, "latitude": body.latitude, "longitude": body.longitude,
+        item = {"id": incident_id, "request_id": str(body.request_id), "road": body.road, "latitude": body.latitude, "longitude": body.longitude,
                 "severity": body.severity, "notes": body.notes, "contributor": body.contributor,
                 "road_normalized": normalize_road_name(body.road),
                 "source": body.source, "model_version": body.model_version,

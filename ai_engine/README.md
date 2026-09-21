@@ -130,3 +130,7 @@ The JSON intentionally has no centimetre depth field. Metric depth requires a
 calibrated camera/RGB-D capture and ground-truth physical measurements.
 Its stable web integration format is defined in
 `contracts/ruasvision-inference-v0.2.schema.json`.
+
+The API verifies the selected checkpoint SHA-256 against
+`config/ruasvision-release-v0.3.yaml` before loading it. A mismatch stops model
+startup instead of serving an unverified checkpoint.

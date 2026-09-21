@@ -29,6 +29,7 @@ can replace the scan while preserving this response shape.
 
 New incidents preserve:
 
+- `request_id`: the client idempotency key used to make retries safe;
 - `source`: `manual`, `ai`, or `imported`;
 - `model_version`: optional model release identifier;
 - `location_confidence`: optional value from `0` to `1`;

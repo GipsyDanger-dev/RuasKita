@@ -23,7 +23,8 @@ Open http://localhost:3000/dashboard. The existing approved home composition is
 retained at `/`, with its illustrative score explicitly labelled. Operational
 pages start empty; they never silently seed or mix demo incidents into real data.
 
-The API reads the frozen model manifest and loads its checkpoint when available.
+The API reads the frozen model manifest, verifies the checkpoint SHA-256 when the
+checkpoint is available, and then loads it.
 It uses CUDA when available, otherwise CPU. Missing checkpoint means analysis
 returns HTTP 503; manual reporting remains available. No training is started.
 
