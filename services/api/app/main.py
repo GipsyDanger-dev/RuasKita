@@ -20,6 +20,7 @@ os.environ.setdefault("YOLO_AUTOINSTALL", "false")
 from ultralytics import YOLO
 from fastapi.responses import JSONResponse
 from .operations import router, MAX_UPLOAD
+from .security import allowed_origins, is_loopback_host, origin_is_allowed
 from .storage import database, storage_metadata
 
 
@@ -53,7 +54,7 @@ app = FastAPI(
 )
 app.add_middleware(
     CORSMiddleware,
-    allow_origins=os.getenv("RUASKITA_ORIGINS", "http://localhost:3000,http://127.0.0.1:3000").split(","),
+    allow_origins=allowed_origins(),
     allow_credentials=False,
     allow_methods=["GET", "POST"],
     allow_headers=["*"],
@@ -64,11 +65,10 @@ app.include_router(router)
 @app.middleware("http")
 async def local_workspace_only(request, call_next):
     # No fake authentication: until Supabase/RBAC lands this is loopback-only.
-    if request.client and request.client.host not in {"127.0.0.1", "::1", "testclient"}:
+    if request.client and not is_loopback_host(request.client.host):
         return JSONResponse({"detail": "Workspace lokal. Akses jaringan dinonaktifkan sampai autentikasi tersedia."}, status_code=403)
     origin = request.headers.get("origin")
-    allowed = os.getenv("RUASKITA_ORIGINS", "http://localhost:3000,http://127.0.0.1:3000").split(",")
-    if request.method not in {"GET", "HEAD", "OPTIONS"} and origin and origin not in allowed:
+    if request.method not in {"GET", "HEAD", "OPTIONS"} and not origin_is_allowed(origin):
         return JSONResponse({"detail": "Origin tidak diizinkan."}, status_code=403)
     return await call_next(request)
 

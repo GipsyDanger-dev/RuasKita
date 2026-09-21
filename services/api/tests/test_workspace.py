@@ -11,6 +11,7 @@ from PIL import Image
 from fastapi.testclient import TestClient
 from services.api.app.domain import haversine_meters, normalize_road_name
 from services.api.app.main import app
+from services.api.app.security import allowed_origins, is_loopback_host, origin_is_allowed
 from services.api.app.storage import storage_metadata
 
 
@@ -100,6 +101,14 @@ class WorkspaceTests(unittest.TestCase):
         health = self.client.get("/health").json()
         self.assertEqual(health["storage"], "SQLITE")
         self.assertEqual(health["storage_details"]["schema_version"], 1)
+
+    def test_local_security_boundary_is_explicit(self):
+        self.assertTrue(is_loopback_host("127.0.0.1"))
+        self.assertTrue(is_loopback_host("::1"))
+        self.assertFalse(is_loopback_host("192.0.2.10"))
+        self.assertIn("http://127.0.0.1:3000", allowed_origins())
+        self.assertTrue(origin_is_allowed("http://127.0.0.1:3000"))
+        self.assertFalse(origin_is_allowed("https://untrusted.example"))
 
     def test_duplicate_candidates_are_explainable_and_scored(self):
         item, _ = self.create()
