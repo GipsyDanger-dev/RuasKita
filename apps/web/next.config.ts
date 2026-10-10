@@ -8,6 +8,7 @@ const allowedDevOrigins = (process.env.RUASKITA_ALLOWED_DEV_ORIGINS ?? "")
   .filter(Boolean);
 
 const nextConfig: NextConfig = {
+  distDir: process.env.RUASKITA_WEB_DIST_DIR ?? ".next",
   devIndicators: false,
   ...(allowedDevOrigins.length > 0 ? { allowedDevOrigins } : {}),
   async rewrites() {
