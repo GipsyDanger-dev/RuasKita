@@ -25,6 +25,8 @@ import { NewIncident, IncidentDetail } from "./incident-editor";
 import { ReportsPage, ReportDetail } from "./reports";
 import { EvidenceImage } from "./evidence";
 import Dashboard from "./dashboard";
+import ScanPage, { ScanLegend } from "./scan-page";
+import type { ScanPoint } from "@/lib/scans";
 const RoadMap = dynamic(() => import("./map"), {
   ssr: false,
   loading: () => <div className="rk-map-placeholder">Menyiapkan peta…</div>,
@@ -45,6 +47,7 @@ export default function WorkspacePage({
   id?: string;
   filter: Filter;
 }) {
+  if (section === "scan") return <ScanPage />;
   if (section === "incidents" && id === "new") return <NewIncident />;
   if (section === "incidents" && id) return <IncidentDetail id={id} />;
   if (section === "reports")
@@ -59,7 +62,7 @@ export default function WorkspacePage({
   );
 }
 function DataPages({ section, filter }: { section: string; filter: Filter }) {
-  const resource = useResource<Incident[]>("/v1/incidents");
+  const resource = useResource<Incident[]>("/v1/incidents", ["map", "incidents", "dashboard"].includes(section) ? 4000 : 0);
   if (!resource.data) return <LoadState {...resource} />;
   const items = resource.data;
   switch (section) {
@@ -263,6 +266,7 @@ function MapPage({
   const [query, setQuery] = useState("");
   const [status, setStatus] = useState("");
   const [selected, setSelected] = useState(filter.id || "");
+  const coverage = useResource<ScanPoint[]>("/v1/scans/coverage", 4000);
   const shown = useMemo(
     () =>
       items.filter(
@@ -329,7 +333,7 @@ function MapPage({
           </div>
         </aside>
         <section className="rk-map-canvas">
-          <RoadMap items={shown} selected={selected} onSelect={setSelected} />
+          <RoadMap items={shown} selected={selected} onSelect={setSelected} coverage={query || status ? [] : coverage.data} />
           {chosen && (
             <div className="rk-map-detail">
               <div>
@@ -347,10 +351,9 @@ function MapPage({
           )}
         </section>
       </div>
-      <p className="rk-helper">
-        Lokasi dipilih pelapor. Road matching, GeoFusion, dan pembaruan realtime
-        belum diaktifkan.
-      </p>
+      <ScanLegend />
+      {coverage.error && <p className="rk-error" role="alert">Jejak scan belum diperbarui: {coverage.error}</p>}
+      <p className="rk-helper">Data diperbarui setiap 4 detik. Jejak scan tampil saat filter kosong. GPS adalah posisi perangkat; road matching dan GeoFusion belum aktif. <Link href="/scan">Mulai live scan</Link></p>
     </>
   );
 }

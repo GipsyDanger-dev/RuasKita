@@ -53,6 +53,13 @@ Date: 2026-09-21. Scope: local desktop vertical slice, before mobile and field v
 
 ## Integration sprint status
 
+Live scan slice (2026-10-10): accepted camera samples now persist in schema 3 with
+GPS timestamps and accuracy. Two usable nearby detections produce a provisional
+candidate area; maps and lists refresh every four seconds. `/scan` has explicit
+save/GPS states and stops on hidden pages. Recorded files never use current GPS.
+Phone preview runs through a random-password gateway and HTTPS tunnel, not public
+unauthenticated access. See [contract, limits and verification](LIVE_SCAN.md).
+
 The first foundation slice is now in progress: incident provenance fields,
 schema versioning, a storage adapter seam, an explainable duplicate-candidate
 endpoint, contract documentation, and CI checks are present. Automatic merges,

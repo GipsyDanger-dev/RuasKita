@@ -3,6 +3,12 @@
 This slice implements the desktop-first direction agreed with the user. It does
 not complete the full 12-sprint PRD or claim production / field readiness.
 
+Live scan update (2026-10-10): `/scan` now records accepted camera samples and GPS,
+creates provisional candidate areas, and updates map/list data by four-second polling.
+See [live scan contract and password-protected phone preview](LIVE_SCAN.md).
+The manual camera/video panel described below remains an optional evidence flow;
+automatic persistence applies only to the dedicated `/scan` camera session.
+
 ## Run
 
 From the repository root, in one terminal:
@@ -49,10 +55,10 @@ New-NetFirewallRule -DisplayName "RuasKita LAN Preview 3000" `
 The API remains bound to `127.0.0.1` and is reached through the same-origin
 Next.js proxy.
 
-The active session on the development computer uses HTTPS on port 3000. With
-the current Wi-Fi address, the live camera page is
-`https://192.168.1.32:3000/incidents/new`; accept the local certificate warning
-once before granting camera permission.
+The Wi-Fi address can change between sessions. Use the development computer's
+current IPv4 address in `https://<IP-KOMPUTER>:3000/incidents/new`; accept the
+local certificate warning before granting camera permission. A self-signed
+preview certificate is not a production HTTPS setup.
 
 The API reads the frozen model manifest, verifies the checkpoint SHA-256 when the
 checkpoint is available, and then loads it.
@@ -98,7 +104,7 @@ and Supabase remain the intended production architecture.
 
 Tables: `incidents` (versioned JSON aggregate), `evidence` (sanitized JPEG bytes and
 server-generated AI result), `reports` (immutable snapshot and canonical JSON hash).
-The SQLite adapter reports schema version `2` and is isolated behind
+The SQLite adapter reports schema version `3` and is isolated behind
 `services/api/app/storage.py`; this is the migration seam for PostgreSQL/PostGIS.
 All SQL uses bound parameters. Read/modify/write transactions serialize concurrent
 updates. Revision conflicts return 409 instead of silently overwriting changes.
@@ -113,8 +119,10 @@ provenance from a future matching pipeline.
 
 Photo uploads accept JPEG/PNG/WebP, max 10 MB and 25 megapixels. Photos are oriented,
 re-encoded as JPEG, stripped of EXIF, and limited to 2400px before storage/inference.
-Original photos are not retained. Live camera/video frames are sampled in memory;
+Original photos are not retained. Manual camera/video frames are sampled in memory;
 only a frame explicitly captured by the operator enters the evidence upload flow.
+Dedicated `/scan` sessions additionally save accepted sample metadata and retain a
+sanitized evidence image for each automatically created candidate area.
 Face/plate blurring is **not implemented**; use non-identifying evidence locally and
 do not publish this storage.
 

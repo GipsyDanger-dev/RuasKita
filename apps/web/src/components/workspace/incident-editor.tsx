@@ -16,6 +16,7 @@ import {
   severityNames,
 } from "@/lib/workspace";
 import EvidenceInput, { EvidenceImage } from "./evidence";
+import type { LiveLocation } from "./live-camera";
 import {
   Badge,
   ErrorMessage,
@@ -72,6 +73,10 @@ export function NewIncident() {
       { enableHighAccuracy: true, timeout: 15000 },
     );
   }
+  function receiveLiveLocation(location: LiveLocation) {
+    setLat(location.latitude.toFixed(6));
+    setLng(location.longitude.toFixed(6));
+  }
   async function submit(e: FormEvent<HTMLFormElement>) {
     e.preventDefault();
     if (!evidence || busy) return;
@@ -112,7 +117,11 @@ export function NewIncident() {
             <span>01</span>
             <h2>Bukti visual</h2>
           </div>
-          <EvidenceInput onChange={setEvidence} disabled={busy} />
+          <EvidenceInput
+            onChange={setEvidence}
+            onLocationChange={receiveLiveLocation}
+            disabled={busy}
+          />
           <p className="rk-helper">
             Analisis AI opsional. Foto tanpa analisis tetap bisa dilaporkan
             secara manual. Kedalaman dalam cm belum tersedia.
@@ -187,8 +196,8 @@ export function NewIncident() {
               {locating ? "Mencari lokasi…" : "⌖ Gunakan lokasi perangkat"}
             </button>
             <p className="rk-helper">
-              Klik peta untuk menentukan titik kerusakan. GPS adalah posisi
-              perangkat, bukan hasil GeoFusion.
+              GPS kamera disalin saat memilih frame, bukan saat memutar video.
+              Klik peta atau isi koordinat untuk mengubah titik laporan.
             </p>
             <label className="rk-field">
               Tingkat perhatian awal

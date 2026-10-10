@@ -210,14 +210,14 @@ test("live camera explains a denied permission", async ({ page }) => {
     });
   });
   await page.goto("/incidents/new");
-  await page.getByRole("button", { name: "Buka live camera / video" }).click();
+  await page.getByRole("button", { name: "Buka live scan" }).click();
   await page.getByRole("button", { name: "Mulai kamera" }).click();
   await expect(
     page.getByRole("alert").filter({
       hasText: "Akses kamera ditolak. Izinkan kamera lalu coba lagi.",
     }),
   ).toBeVisible();
-  await page.getByRole("tab", { name: "File video" }).click();
+  await page.getByRole("button", { name: "File video" }).click();
   await page.getByLabel("Pilih video jalan").setInputFiles(photo);
   await expect(page.locator(".rk-main").getByRole("alert")).toContainText(
     "File video tidak dikenali",
@@ -254,6 +254,31 @@ test("live camera samples a frame and renders the AI overlay", async ({
         },
       },
     });
+    Object.defineProperty(navigator, "geolocation", {
+      configurable: true,
+      value: {
+        watchPosition: (success: PositionCallback) => {
+          success({
+            coords: {
+              latitude: -7.7956,
+              longitude: 110.3695,
+              accuracy: 12,
+            },
+            timestamp: Date.now(),
+          } as GeolocationPosition);
+          return 42;
+        },
+        clearWatch: () => {
+          const stops = Number(
+            window.localStorage.getItem("ruaskita-location-stops") ?? "0",
+          );
+          window.localStorage.setItem(
+            "ruaskita-location-stops",
+            String(stops + 1),
+          );
+        },
+      },
+    });
     Object.defineProperty(HTMLVideoElement.prototype, "videoWidth", {
       configurable: true,
       get: () => 640,
@@ -273,11 +298,6 @@ test("live camera samples a frame and renders the AI overlay", async ({
     Object.defineProperty(CanvasRenderingContext2D.prototype, "drawImage", {
       configurable: true,
       value: () => undefined,
-    });
-    Object.defineProperty(HTMLCanvasElement.prototype, "toBlob", {
-      configurable: true,
-      value: (callback: BlobCallback) =>
-        callback(new Blob(["frame"], { type: "image/jpeg" })),
     });
   });
   await page.route(
@@ -307,18 +327,23 @@ test("live camera samples a frame and renders the AI overlay", async ({
       }),
   );
   await page.goto("/incidents/new");
-  await page.getByRole("button", { name: "Buka live camera / video" }).click();
+  await page.getByRole("button", { name: "Buka live scan" }).click();
   await page.getByRole("button", { name: "Mulai kamera" }).click();
   await expect(
-    page.locator(".rk-live-status").getByText(/Frame terakhir: 1 pothole/),
+    page.locator(".rk-live-status").getByText("1 lubang terdeteksi."),
   ).toBeVisible({ timeout: 10000 });
+  await expect(page.getByText("GPS aktif · akurasi ±12 m")).toBeVisible();
+  await expect(page.locator('input[name="latitude"]')).toHaveValue("");
+  await expect(page.locator('input[name="longitude"]')).toHaveValue("");
   expect(await page.evaluate(() => localStorage.getItem("ruaskita-track-stops"))).toBe("0");
   await expect(
     page.getByRole("img", { name: "1 area terdeteksi AI pada frame terakhir" }),
   ).toBeVisible();
   await page.getByRole("button", { name: "Hentikan scan" }).click();
+  await expect(page.locator(".rk-live-stage svg")).toHaveCount(0);
   expect(await page.evaluate(() => localStorage.getItem("ruaskita-track-stops"))).toBe("1");
-  await page.getByRole("tab", { name: "File video" }).click();
+  expect(await page.evaluate(() => localStorage.getItem("ruaskita-location-stops"))).toBe("1");
+  await page.getByRole("button", { name: "File video" }).click();
   await page.getByLabel("Pilih video jalan").setInputFiles({
     name: "road.mp4",
     mimeType: "video/mp4",
@@ -326,7 +351,74 @@ test("live camera samples a frame and renders the AI overlay", async ({
   });
   await page.getByRole("button", { name: "Putar & scan video" }).click();
   await expect(
-    page.locator(".rk-live-status").getByText(/Frame terakhir: 1 pothole/),
+    page.locator(".rk-live-status").getByText("1 lubang terdeteksi."),
   ).toBeVisible({ timeout: 10000 });
   await page.getByRole("button", { name: "Hentikan scan" }).click();
+  await page.getByRole("button", { name: "Kamera", exact: true }).click();
+  await page.getByRole("button", { name: "Mulai kamera" }).click();
+  await page.getByRole("button", { name: "Gunakan frame ini" }).click();
+  await expect(page.locator(".rk-evidence-image img")).toBeVisible();
+  await expect(page.locator('input[name="latitude"]')).toHaveValue("-7.795600");
+  await expect(page.locator('input[name="longitude"]')).toHaveValue("110.369500");
+  expect(await page.evaluate(() => localStorage.getItem("ruaskita-track-stops"))).toBe("2");
+  await page.getByRole("button", { name: "Mulai kamera" }).click();
+  await expect(page.getByRole("button", { name: "Hentikan scan" })).toBeVisible();
+  await page.getByRole("button", { name: "Tutup", exact: true }).click();
+  expect(await page.evaluate(() => localStorage.getItem("ruaskita-track-stops"))).toBe("3");
+  await expect(page.getByRole("button", { name: "Buka live scan" })).toBeFocused();
+});
+
+test("live scan controls reflow, support keyboard, and show honest states in both themes", async ({ page }) => {
+  const errors: string[] = [];
+  page.on("pageerror", (error) => errors.push(error.message));
+  await page.addInitScript(() => {
+    Object.defineProperty(navigator, "mediaDevices", {
+      configurable: true,
+      value: { getUserMedia: () => new Promise<MediaStream>(() => {}) },
+    });
+  });
+  await page.goto("/incidents/new");
+  await page.getByRole("button", { name: "Buka live scan" }).click();
+  const camera = page.getByRole("button", { name: "Kamera", exact: true });
+  await expect(page.getByRole("button", { name: "Tutup", exact: true })).toBeFocused();
+  const video = page.getByRole("button", { name: "File video", exact: true });
+  await camera.focus();
+  await page.keyboard.press("Tab");
+  await expect(video).toBeFocused();
+  await page.keyboard.press("Space");
+  await expect(video).toHaveAttribute("aria-pressed", "true");
+  await expect(page.getByRole("button", { name: "Putar & scan video" })).toBeDisabled();
+  expect(await video.evaluate((el) => getComputedStyle(el).outlineStyle)).not.toBe("none");
+  for (const theme of ["light", "dark"]) {
+    if (theme === "dark") {
+      await page.setViewportSize({ width: 1440, height: 1000 });
+      await page.getByRole("button", { name: "Gunakan tema gelap" }).click();
+    }
+    for (const width of [320, 390, 768, 1440]) {
+      await page.setViewportSize({ width, height: 900 });
+      const layout = await page.evaluate(() => ({
+        fits: document.documentElement.scrollWidth <= innerWidth + 1,
+        overflowing: Array.from(document.querySelectorAll(".rk-main *"))
+          .filter((el) => el.getBoundingClientRect().right > innerWidth + 1)
+          .map((el) => `${el.tagName}.${el.className}`),
+      }));
+      await page.evaluate(() => window.scrollTo(0, 0));
+      await page.screenshot({ path: `test-results/live-page-${theme}-${width}.png`, fullPage: true });
+      expect(layout.fits, JSON.stringify({ width, theme, ...layout })).toBeTruthy();
+      for (const control of await page.locator(".rk-live-camera button").all()) {
+        const box = await control.boundingBox();
+        expect(box?.height).toBeGreaterThanOrEqual(44);
+        expect(box?.width).toBeGreaterThanOrEqual(44);
+      }
+      await page.locator(".rk-live-panel").screenshot({ path: `test-results/live-${theme}-${width}.png` });
+    }
+  }
+  await camera.click();
+  await page.getByRole("button", { name: "Mulai kamera" }).click();
+  await expect(page.getByText("Menyiapkan pratinjau…", { exact: true })).toBeVisible();
+  await page.getByRole("button", { name: "Batalkan", exact: true }).click();
+  await expect(page.getByRole("button", { name: "Mulai kamera" })).toBeEnabled();
+  await page.getByRole("button", { name: "Tutup", exact: true }).click();
+  await expect(page.getByRole("button", { name: "Buka live scan" })).toBeFocused();
+  expect(errors).toEqual([]);
 });

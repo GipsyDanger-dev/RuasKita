@@ -5,6 +5,7 @@ import WorkspacePage from "@/components/workspace/pages";
 const routes = [
   "dashboard",
   "map",
+  "scan",
   "roads",
   "incidents",
   "repairs",

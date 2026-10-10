@@ -1,7 +1,7 @@
 "use client";
 import { useState } from "react";
 import { Analysis, api, evidenceURL, upload } from "@/lib/workspace";
-import LiveCamera from "./live-camera";
+import LiveCamera, { type LiveLocation } from "./live-camera";
 import { ErrorMessage } from "./shared";
 
 export function EvidenceImage({
@@ -51,11 +51,13 @@ export default function EvidenceInput({
   analyze = true,
   label = "Foto bukti",
   disabled = false,
+  onLocationChange,
 }: {
   onChange: (id: string, analysis?: Analysis) => void;
   analyze?: boolean;
   label?: string;
   disabled?: boolean;
+  onLocationChange?: (location: LiveLocation) => void;
 }) {
   const [id, setId] = useState("");
   const [result, setResult] = useState<Analysis>();
@@ -98,6 +100,11 @@ export default function EvidenceInput({
   }
   return (
     <section className="rk-evidence-input">
+      <LiveCamera
+        onCapture={(file) => void choose(file)}
+        onLocationChange={onLocationChange}
+        disabled={!!busy || disabled}
+      />
       <label className="rk-upload">
         <span>{label}</span>
         <small>JPEG, PNG, WebP · maksimal 10 MB</small>
@@ -112,7 +119,6 @@ export default function EvidenceInput({
           }}
         />
       </label>
-      <LiveCamera onCapture={(file) => void choose(file)} disabled={!!busy || disabled} />
       {id && <EvidenceImage id={id} analysis={result} />}
       {id && analyze && (
         <button
@@ -121,8 +127,7 @@ export default function EvidenceInput({
           disabled={!!busy || disabled}
           onClick={run}
         >
-          {result ? "Analisis ulang" : "Analisis dengan RuasVision"}{" "}
-          <span aria-hidden="true">↗</span>
+          {result ? "Analisis ulang" : "Analisis dengan RuasVision"}
         </button>
       )}
       {busy && (

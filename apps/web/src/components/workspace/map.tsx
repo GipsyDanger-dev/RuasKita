@@ -3,6 +3,7 @@ import { useEffect, useRef, useState } from "react";
 import * as maplibregl from "maplibre-gl";
 import "maplibre-gl/dist/maplibre-gl.css";
 import { Incident } from "@/lib/workspace";
+import type { ScanPoint } from "@/lib/scans";
 
 export default function RoadMap({
   items,
@@ -10,15 +11,19 @@ export default function RoadMap({
   onSelect,
   onPick,
   pin,
+  coverage,
 }: {
   items: Incident[];
   selected?: string;
   onSelect?: (id: string) => void;
   onPick?: (latitude: number, longitude: number) => void;
   pin?: [number, number];
+  coverage?: ScanPoint[];
 }) {
   const container = useRef<HTMLDivElement>(null);
   const map = useRef<maplibregl.Map | null>(null);
+  const viewportKey = useRef("");
+  const coverageFramed = useRef(false);
   const callbacks = useRef({ onSelect, onPick });
   const [error, setError] = useState("");
   const [loaded, setLoaded] = useState(false);
@@ -113,6 +118,10 @@ export default function RoadMap({
     return () => markers.forEach((marker) => marker.remove());
   }, [items, selected, pin]);
   useEffect(() => {
+    if (pin) return;
+    const key = JSON.stringify([selected, items.map((item) => [item.id, item.longitude, item.latitude])]);
+    if (key === viewportKey.current) return;
+    viewportKey.current = key;
     const target = items.find((item) => item.id === selected);
     if (target)
       map.current?.easeTo({
@@ -127,10 +136,43 @@ export default function RoadMap({
       items.forEach((i) => bounds.extend([i.longitude, i.latitude]));
       map.current?.fitBounds(bounds, { padding: 70, maxZoom: 15, duration: 0 });
     }
-  }, [items, selected]);
+  }, [items, selected, pin]);
   useEffect(() => {
     if (pin) map.current?.easeTo({ center: pin, duration: 0 });
   }, [pin]);
+  useEffect(() => {
+    const instance = map.current;
+    if (!instance || !loaded) return;
+    const features: GeoJSON.Feature[] = [];
+    const previous = new Map<string, ScanPoint>();
+    for (const point of coverage ?? []) {
+      const properties = { state: point.state };
+      features.push({ type: "Feature", properties, geometry: { type: "Point", coordinates: [point.longitude, point.latitude] } });
+      const last = previous.get(point.session_id ?? "");
+      if (last) {
+        const seconds = (Date.parse(point.captured_at) - Date.parse(last.captured_at)) / 1000;
+        const distance = Math.hypot((point.latitude - last.latitude) * 111320, (point.longitude - last.longitude) * 111320 * Math.cos(point.latitude * Math.PI / 180));
+        if (seconds > 0 && seconds <= 20 && distance <= 100) features.push({ type: "Feature", properties,
+          geometry: { type: "LineString", coordinates: [[last.longitude, last.latitude], [point.longitude, point.latitude]] } });
+      }
+      previous.set(point.session_id ?? "", point);
+    }
+    const data: GeoJSON.FeatureCollection = { type: "FeatureCollection", features };
+    if (!coverageFramed.current && coverage?.length && !pin && !items.length) {
+      const bounds = new maplibregl.LngLatBounds();
+      coverage.forEach((point) => bounds.extend([point.longitude, point.latitude]));
+      instance.fitBounds(bounds, { padding: 50, maxZoom: 16, duration: 0 });
+      coverageFramed.current = true;
+    }
+    const source = instance.getSource("scan-coverage") as maplibregl.GeoJSONSource | undefined;
+    if (source) source.setData(data);
+    else {
+      instance.addSource("scan-coverage", { type: "geojson", data });
+      const color: maplibregl.ExpressionSpecification = ["match", ["get", "state"], "detected", "#ad4d28", "no_detection", "#32618c", "#72787d"];
+      instance.addLayer({ id: "scan-lines", type: "line", source: "scan-coverage", filter: ["==", ["geometry-type"], "LineString"], paint: { "line-color": color, "line-width": 5, "line-opacity": 0.8 } });
+      instance.addLayer({ id: "scan-points", type: "circle", source: "scan-coverage", filter: ["==", ["geometry-type"], "Point"], paint: { "circle-color": color, "circle-radius": 4, "circle-stroke-color": "#ffffff", "circle-stroke-width": 1 } });
+    }
+  }, [coverage, loaded, pin, items.length]);
   return (
     <div className="rk-map-frame">
       <div

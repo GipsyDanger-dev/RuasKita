@@ -12,7 +12,7 @@ import {
   Status,
 } from "@/lib/workspace";
 
-export function useResource<T>(path: string) {
+export function useResource<T>(path: string, refreshMs = 0) {
   const [state, setState] = useState<{
     data?: T;
     error?: string;
@@ -27,10 +27,15 @@ export function useResource<T>(path: string) {
       .then((data) => setState({ data, path }))
       .catch((error) => {
         if (!controller.signal.aborted)
-          setState({ error: error.message, path });
+          setState((previous) => ({ data: previous.path === path ? previous.data : undefined, error: error.message, path }));
       });
     return () => controller.abort();
   }, [path, version]);
+  useEffect(() => {
+    if (!refreshMs) return;
+    const timer = window.setInterval(() => { if (!document.hidden) setVersion((v) => v + 1); }, refreshMs);
+    return () => window.clearInterval(timer);
+  }, [refreshMs]);
   return {
     data: state.path === path ? state.data : undefined,
     error: state.path === path ? state.error : undefined,

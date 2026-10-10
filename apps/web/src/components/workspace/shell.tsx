@@ -31,6 +31,7 @@ const navGroups: readonly NavGroup[] = [
     links: [
       { url: "dashboard", label: "Ringkasan", icon: "dashboard" },
       { url: "map", label: "Peta", icon: "map" },
+      { url: "scan", label: "Live scan", icon: "ruasview" },
       { url: "roads", label: "Ruas Jalan", icon: "roads" },
     ],
   },

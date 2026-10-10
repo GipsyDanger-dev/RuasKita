@@ -3,24 +3,42 @@
 import {
   useCallback,
   useEffect,
+  useId,
   useRef,
   useState,
   type ChangeEvent,
 } from "react";
-import { Analysis, api } from "@/lib/workspace";
+import { Analysis, api, post } from "@/lib/workspace";
+import type { ScanReceipt } from "@/lib/scans";
 import { ErrorMessage } from "./shared";
 
 const FRAME_INTERVAL_MS = 1500;
 
 type LiveSource = "camera" | "video";
 
+export type LiveLocation = {
+  latitude: number;
+  longitude: number;
+  accuracy: number | null;
+  capturedAt: number;
+};
+
 export default function LiveCamera({
   onCapture,
+  onLocationChange,
+  automatic,
+  onSaved,
   disabled = false,
 }: {
-  onCapture: (file: File) => void;
+  onCapture?: (file: File) => void;
+  onLocationChange?: (location: LiveLocation) => void;
+  automatic?: { road: string; contributor: string };
+  onSaved?: (receipt: ScanReceipt, sessionId: string) => void;
   disabled?: boolean;
 }) {
+  const panelId = useId();
+  const openButtonRef = useRef<HTMLButtonElement>(null);
+  const closeButtonRef = useRef<HTMLButtonElement>(null);
   const videoRef = useRef<HTMLVideoElement>(null);
   const canvasRef = useRef<HTMLCanvasElement>(null);
   const streamRef = useRef<MediaStream | null>(null);
@@ -29,6 +47,12 @@ export default function LiveCamera({
   const requestRef = useRef<AbortController | null>(null);
   const analyzeFrameRef = useRef<(() => void) | null>(null);
   const cameraCancelRef = useRef<(() => void) | null>(null);
+  const locationWatchRef = useRef<number | null>(null);
+  const latestLocationRef = useRef<LiveLocation | undefined>(undefined);
+  const scanSessionRef = useRef<string | null>(null);
+  const sequenceRef = useRef(0);
+  const generationRef = useRef(0);
+  const callbacksRef = useRef({ onLocationChange, onSaved });
   const activeRef = useRef(false);
   const frameInFlightRef = useRef(false);
   const [open, setOpen] = useState(false);
@@ -38,8 +62,12 @@ export default function LiveCamera({
   const [starting, setStarting] = useState(false);
   const [analyzing, setAnalyzing] = useState(false);
   const [analysis, setAnalysis] = useState<Analysis>();
+  const [location, setLocation] = useState<LiveLocation>();
+  const [locationError, setLocationError] = useState("");
   const [error, setError] = useState("");
   const [captureMessage, setCaptureMessage] = useState("");
+  const [saveMessage, setSaveMessage] = useState("");
+  useEffect(() => { callbacksRef.current = { onLocationChange, onSaved }; }, [onLocationChange, onSaved]);
 
   const clearTimer = useCallback(() => {
     if (timerRef.current !== null) {
@@ -64,18 +92,80 @@ export default function LiveCamera({
     }
   }, []);
 
+  const stopLocationTracking = useCallback(() => {
+    if (locationWatchRef.current !== null && navigator.geolocation) {
+      navigator.geolocation.clearWatch(locationWatchRef.current);
+    }
+    locationWatchRef.current = null;
+  }, []);
+
+  const startLocationTracking = useCallback(() => {
+    stopLocationTracking();
+    latestLocationRef.current = undefined;
+    setLocation(undefined);
+    setLocationError("");
+    if (!navigator.geolocation) {
+      setLocationError("GPS tidak tersedia di browser ini.");
+      return;
+    }
+    locationWatchRef.current = navigator.geolocation.watchPosition(
+      (position) => {
+        const next = {
+          latitude: position.coords.latitude,
+          longitude: position.coords.longitude,
+          accuracy: Number.isFinite(position.coords.accuracy)
+            ? position.coords.accuracy
+            : null,
+          capturedAt: position.timestamp,
+        };
+        setLocation(next);
+        latestLocationRef.current = next;
+        setLocationError("");
+      },
+      (positionError) => {
+        const message =
+          positionError.code === positionError.PERMISSION_DENIED
+            ? "Akses lokasi ditolak. Isi titik laporan secara manual."
+            : "GPS belum tersedia. Coba lagi di area dengan sinyal lebih baik.";
+        setLocationError(message);
+        latestLocationRef.current = undefined;
+      },
+      { enableHighAccuracy: true, maximumAge: 5000, timeout: 15000 },
+    );
+  }, [stopLocationTracking]);
+
   const stopSession = useCallback(() => {
+    generationRef.current += 1;
+    const sessionId = scanSessionRef.current;
+    scanSessionRef.current = null;
+    if (sessionId) {
+      void api(`/v1/scans/${sessionId}/stop`, { method: "POST", keepalive: true }).catch(() => {
+        setSaveMessage("Kamera berhenti. Server belum mengonfirmasi akhir sesi; data yang sudah tersimpan tetap ada.");
+      });
+    }
     activeRef.current = false;
     clearTimer();
     cameraCancelRef.current?.();
     cameraCancelRef.current = null;
     requestRef.current?.abort();
     requestRef.current = null;
+    stopLocationTracking();
     releaseMedia();
     setActive(false);
     setStarting(false);
     setAnalyzing(false);
-  }, [clearTimer, releaseMedia]);
+  }, [clearTimer, releaseMedia, stopLocationTracking]);
+
+  useEffect(() => {
+    const pauseHidden = () => {
+      if (document.hidden && activeRef.current) {
+        stopSession();
+        setSaveMessage("Scan dijeda karena halaman tidak aktif. Mulai lagi saat siap.");
+      }
+    };
+    document.addEventListener("visibilitychange", pauseHidden);
+    return () => document.removeEventListener("visibilitychange", pauseHidden);
+  }, [stopSession]);
 
   useEffect(() => {
     return () => stopSession();
@@ -90,8 +180,9 @@ export default function LiveCamera({
     const canvas = canvasRef.current;
     if (!video || !canvas || video.videoWidth === 0 || video.videoHeight === 0)
       return null;
-    canvas.width = video.videoWidth;
-    canvas.height = video.videoHeight;
+    const scale = Math.min(1, 1280 / Math.max(video.videoWidth, video.videoHeight));
+    canvas.width = Math.round(video.videoWidth * scale);
+    canvas.height = Math.round(video.videoHeight * scale);
     const context = canvas.getContext("2d");
     if (!context) return null;
     context.drawImage(video, 0, 0, canvas.width, canvas.height);
@@ -122,6 +213,15 @@ export default function LiveCamera({
       scheduleFrame();
       return;
     }
+    const sessionId = scanSessionRef.current;
+    const generation = generationRef.current;
+    const gps = latestLocationRef.current;
+    const capturedAt = Date.now();
+    if (sessionId && (!gps || gps.accuracy === null || gps.accuracy <= 0 || gps.accuracy > 25 || capturedAt - gps.capturedAt > 5000)) {
+      setSaveMessage("Belum disimpan. Menunggu GPS terbaru dengan akurasi ±25 m atau lebih baik.");
+      scheduleFrame();
+      return;
+    }
     const canvas = drawFrame();
     if (!canvas) {
       scheduleFrame();
@@ -131,27 +231,45 @@ export default function LiveCamera({
     setAnalyzing(true);
     try {
       const blob = await captureBlob(canvas);
-      if (!blob || !activeRef.current) return;
+      if (!blob || !activeRef.current || generation !== generationRef.current) return;
       const body = new FormData();
       body.append("image", blob, "live-frame.jpg");
+      if (sessionId && gps) {
+        body.append("metadata", JSON.stringify({ sequence: ++sequenceRef.current,
+          captured_at: new Date(capturedAt).toISOString(), gps_at: new Date(gps.capturedAt).toISOString(),
+          latitude: gps.latitude, longitude: gps.longitude, accuracy_m: gps.accuracy }));
+      }
       const controller = new AbortController();
       requestRef.current = controller;
-      const response = await api<Analysis>(
-        "/v1/inference/image?confidence=0.5",
-        { method: "POST", body, signal: controller.signal },
-      );
-      if (activeRef.current) {
-        setAnalysis(response);
+      const path = sessionId ? `/v1/scans/${sessionId}/frames` : "/v1/inference/image?confidence=0.5";
+      let response: Analysis | ScanReceipt | undefined;
+      for (let attempt = 0; attempt < 3; attempt++) {
+        try {
+          response = await api<Analysis | ScanReceipt>(path, {
+            method: "POST", body, signal: AbortSignal.any([controller.signal, AbortSignal.timeout(20000)]),
+          });
+          break;
+        } catch (failure) {
+          if (controller.signal.aborted || attempt === 2 || !sessionId) throw failure;
+          setSaveMessage("Koneksi terganggu. Mengirim ulang frame yang sama…");
+        }
+      }
+      if (activeRef.current && generation === generationRef.current && response) {
+        if ("point" in response && sessionId) {
+          setAnalysis(response.analysis);
+          setSaveMessage(`${response.frame_count} frame tersimpan. ${response.incident_count} kandidat area dilaporkan.${response.point.state === "uncertain" ? " Frame terbaru kurang tajam; kondisi belum dinilai." : ""}`);
+          callbacksRef.current.onSaved?.(response, sessionId);
+        } else if (!("point" in response)) setAnalysis(response);
         setError("");
       }
     } catch (caught) {
-      if (caught instanceof Error && caught.name === "AbortError") return;
+      if (generation !== generationRef.current) return;
       const message =
         caught instanceof Error ? caught.message : "Analisis frame gagal.";
       stopSession();
       setError(`Live scan dihentikan: ${message}`);
     } finally {
-      requestRef.current = null;
+      if (generation === generationRef.current) requestRef.current = null;
       frameInFlightRef.current = false;
       setAnalyzing(false);
       scheduleFrame();
@@ -167,6 +285,8 @@ export default function LiveCamera({
     setCaptureMessage("");
     setAnalysis(undefined);
     stopSession();
+    const generation = generationRef.current;
+    setSaveMessage("");
     if (!navigator.mediaDevices?.getUserMedia) {
       setError("Browser ini tidak menyediakan akses kamera.");
       return;
@@ -221,16 +341,27 @@ export default function LiveCamera({
       video.playsInline = true;
       await video.play();
       if (cancelled) return;
+      if (automatic) {
+        const session = await post<{ id: string }>("/v1/scans", { request_id: crypto.randomUUID(), ...automatic });
+        if (cancelled || generation !== generationRef.current) {
+          void post(`/v1/scans/${session.id}/stop`, {}).catch(() => {});
+          return;
+        }
+        scanSessionRef.current = session.id;
+        sequenceRef.current = 0;
+      }
       activeRef.current = true;
       setActive(true);
+      startLocationTracking();
       scheduleFrame(0);
     } catch (caught) {
+      if (generation !== generationRef.current) return;
       const message =
         caught instanceof DOMException && caught.name === "NotAllowedError"
           ? "Akses kamera ditolak. Izinkan kamera lalu coba lagi."
           : caught instanceof Error && caught.message === "Izin kamera belum merespons."
             ? caught.message
-            : "Kamera tidak dapat dimulai. Periksa perangkat dan izin browser.";
+            : caught instanceof Error ? caught.message : "Kamera tidak dapat dimulai. Periksa perangkat dan izin browser.";
       stopSession();
       setError(message);
     } finally {
@@ -238,9 +369,9 @@ export default function LiveCamera({
         cameraCancelRef.current = null;
       }
       if (timeoutId) window.clearTimeout(timeoutId);
-      setStarting(false);
+      if (generation === generationRef.current) setStarting(false);
     }
-  }, [scheduleFrame, stopSession]);
+  }, [automatic, scheduleFrame, startLocationTracking, stopSession]);
 
   const startVideo = useCallback(async () => {
     if (!videoFile) {
@@ -251,6 +382,9 @@ export default function LiveCamera({
     setCaptureMessage("");
     setAnalysis(undefined);
     stopSession();
+    setLocation(undefined);
+    latestLocationRef.current = undefined;
+    const generation = generationRef.current;
     setStarting(true);
     const video = videoRef.current;
     if (!video) {
@@ -283,6 +417,7 @@ export default function LiveCamera({
         });
       }
       await video.play();
+      if (generation !== generationRef.current) return;
       activeRef.current = true;
       setActive(true);
       scheduleFrame(0);
@@ -314,6 +449,7 @@ export default function LiveCamera({
   };
 
   const captureCurrentFrame = useCallback(async () => {
+    const gps = latestLocationRef.current;
     const canvas = drawFrame();
     if (!canvas) {
       setError("Frame belum siap. Tunggu pratinjau berjalan lalu coba lagi.");
@@ -327,82 +463,93 @@ export default function LiveCamera({
     const file = new File([blob], `ruaskita-frame-${Date.now()}.jpg`, {
       type: "image/jpeg",
     });
-    onCapture(file);
+    if (source === "camera" && gps && Date.now() - gps.capturedAt <= 5000) callbacksRef.current.onLocationChange?.(gps);
+    onCapture?.(file);
     setCaptureMessage("Frame dipilih dan sedang diunggah sebagai bukti.");
-  }, [captureBlob, drawFrame, onCapture]);
+  }, [captureBlob, drawFrame, onCapture, source]);
 
   const closePanel = () => {
     stopSession();
     setOpen(false);
     setError("");
     setCaptureMessage("");
+    requestAnimationFrame(() => openButtonRef.current?.focus());
   };
 
   return (
     <section className="rk-live-camera" aria-label="Live camera dan video">
       {!open && (
-        <button
-          type="button"
-          className="rk-button rk-secondary rk-live-open"
-          disabled={disabled}
-          onClick={() => {
-            setOpen(true);
-            setError("");
-          }}
-        >
-          Buka live camera / video
-        </button>
+        <div className="rk-live-entry">
+          <div>
+            <h3>Scan langsung</h3>
+            <p>Kamera atau video jalan.</p>
+          </div>
+          <button
+            ref={openButtonRef}
+            type="button"
+            className="rk-button rk-live-open"
+            aria-expanded={false}
+            aria-controls={panelId}
+            disabled={disabled}
+            onClick={() => {
+              setOpen(true);
+              setError("");
+              requestAnimationFrame(() => closeButtonRef.current?.focus());
+            }}
+          >
+            Buka live scan
+          </button>
+        </div>
       )}
       {open && (
-        <div className="rk-live-panel">
+        <div className="rk-live-panel" id={panelId}>
           <header className="rk-live-heading">
             <div>
-              <p className="rk-kicker">PEMANTAUAN SEMENTARA</p>
-              <h3>Scan dari kamera atau video</h3>
+              <h3>Live scan</h3>
             </div>
             <button
+              ref={closeButtonRef}
               type="button"
-              className="rk-text-button"
+              className="rk-button rk-secondary rk-live-close"
               onClick={closePanel}
-              disabled={active}
             >
               Tutup
             </button>
           </header>
-          <p className="rk-live-copy">
-            Frame dianalisis berkala di API lokal. Tidak ada perekaman atau
-            penyimpanan otomatis.
-          </p>
-          <div className="rk-live-sources" role="tablist" aria-label="Sumber live scan">
+          {!automatic && <div className="rk-live-sources" role="group" aria-label="Sumber live scan">
             <button
               type="button"
-              role="tab"
-              aria-selected={source === "camera"}
+              aria-pressed={source === "camera"}
               disabled={active || starting}
               onClick={() => {
                 setSource("camera");
                 setError("");
+                setAnalysis(undefined);
+                setCaptureMessage("");
               }}
             >
-              Kamera perangkat
+              Kamera
             </button>
             <button
               type="button"
-              role="tab"
-              aria-selected={source === "video"}
+              aria-pressed={source === "video"}
               disabled={active || starting}
               onClick={() => {
                 setSource("video");
                 setError("");
+                setAnalysis(undefined);
+                setCaptureMessage("");
               }}
             >
               File video
             </button>
-          </div>
+          </div>}
+          {automatic && <p className="rk-helper">Frame dan GPS disimpan otomatis saat kamera dimulai. Operasikan dari posisi aman, bukan sambil mengemudi.</p>}
+          {source === "video" && <p className="rk-helper">Video hanya pratinjau analisis. GPS saat ini bukan lokasi rekaman; tidak membuat laporan otomatis.</p>}
           {source === "video" && (
             <label className="rk-live-video-input">
               <span>Pilih video jalan</span>
-              <small>MP4, WebM, atau QuickTime · diproses lokal</small>
+              <small>MP4, WebM, atau QuickTime</small>
               <input
                 aria-label="Pilih video jalan"
                 type="file"
@@ -418,10 +565,9 @@ export default function LiveCamera({
               aria-label="Pratinjau kamera atau video jalan"
               playsInline
               muted
-              controls={source === "video" && !active}
             />
             <canvas ref={canvasRef} hidden aria-hidden="true" />
-            {analysis && (
+            {active && analysis && (
               <svg
                 role="img"
                 aria-label={`${analysis.potholes.length} area terdeteksi AI pada frame terakhir`}
@@ -442,16 +588,27 @@ export default function LiveCamera({
               </svg>
             )}
             {!active && (
-              <p className="rk-live-placeholder">
-                {starting
-                  ? "Menyiapkan sumber live scan…"
+              <div className="rk-live-placeholder">
+                <strong>{starting ? "Menyiapkan pratinjau…" : source === "camera" ? "Kamera belum aktif" : "Pratinjau video"}</strong>
+                <span>{starting
+                  ? source === "camera" ? "Izinkan akses kamera jika diminta." : "Membuka video…"
                   : source === "camera"
-                  ? "Mulai kamera untuk melihat frame jalan."
-                  : "Pilih video, lalu mulai pemindaian."}
-              </p>
+                    ? "Arahkan ke jalan dari posisi aman."
+                    : videoFile ? "Video siap dipindai." : "Pilih file video untuk mulai."}</span>
+              </div>
             )}
           </div>
           <div className="rk-live-actions">
+            {active && onCapture && (
+              <button
+                type="button"
+                className="rk-button"
+                disabled={disabled || starting}
+                onClick={() => void captureCurrentFrame()}
+              >
+                Gunakan frame ini
+              </button>
+            )}
             {starting ? (
               <button
                 type="button"
@@ -478,27 +635,25 @@ export default function LiveCamera({
                 {source === "camera" ? "Mulai kamera" : "Putar & scan video"}
               </button>
             )}
-            <button
-              type="button"
-              className="rk-text-button"
-              disabled={disabled || starting || !active}
-              onClick={() => void captureCurrentFrame()}
-            >
-              Gunakan frame ini
-            </button>
           </div>
-          <div className="rk-live-status" role="status" aria-live="polite">
-            {starting && <span>Meminta akses sumber live scan…</span>}
-            {analyzing && <span>Menganalisis frame terbaru…</span>}
-            {!analyzing && active && analysis && (
-              <span>
-                Frame terakhir: {analysis.potholes.length} pothole terdeteksi ·
-                threshold {Math.round(analysis.confidence_threshold * 100)}%
-              </span>
-            )}
-            {captureMessage && <span>{captureMessage}</span>}
+          <div className="rk-live-status" role="status" aria-live="polite" aria-atomic="true" aria-busy={analyzing}>
+            {captureMessage ? <span>{captureMessage}</span> : active ? (
+              analysis ? <span><strong>{analysis.potholes.length} lubang terdeteksi.</strong> {automatic ? "Hasil AI masih perlu ditinjau." : "Periksa hasil AI sebelum memilih frame."}</span>
+                : <span>{analyzing ? "Menganalisis frame pertama…" : "Kamera aktif. Menunggu frame yang dapat diproses."}</span>
+            ) : !starting && analysis && !error ? <span>Scan dihentikan.</span> : null}
           </div>
+          {saveMessage && <p className="rk-helper" role="status" aria-atomic="true">{saveMessage}</p>}
+          {active && source === "camera" && (
+            <p className="rk-live-location" role="status" aria-live="polite">
+              {location
+                ? <>GPS aktif{location.accuracy !== null ? ` · akurasi ±${Math.round(location.accuracy)} m` : ""}</>
+                : locationError || "Mencari lokasi perangkat…"}
+            </p>
+          )}
           <ErrorMessage error={error} />
+          <p className="rk-live-copy">
+            {automatic && source === "camera" ? "Dua frame berurutan diperlukan untuk kandidat area. Tidak ada deteksi bukan jaminan jalan baik. GPS menunjukkan posisi perangkat." : "Frame dianalisis di server. Bukti disimpan hanya saat dipilih."}
+          </p>
         </div>
       )}
     </section>

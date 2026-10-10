@@ -120,7 +120,8 @@ test("dashboard reflows with long road names and a keyboard accessible mobile me
   await page.keyboard.press("Enter");
   const menu = page.getByRole("dialog", { name: "Menu RuasKita" });
   await expect(menu).toBeVisible();
-  await expect(menu.getByRole("link")).toHaveCount(10);
+  await expect(menu.getByRole("link")).toHaveCount(11);
+  await expect(menu.getByRole("link", { name: "Live scan", exact: true })).toHaveAttribute("href", "/scan");
   for (let index = 0; index < 14; index++) {
     await page.keyboard.press("Tab");
     expect(
