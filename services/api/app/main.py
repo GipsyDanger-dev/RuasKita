@@ -23,6 +23,7 @@ from fastapi.responses import JSONResponse
 from .operations import router, MAX_UPLOAD
 from .security import allowed_origins, is_loopback_host, origin_is_allowed
 from .storage import database, storage_metadata
+from .scans import router as scans_router
 
 
 PROJECT_ROOT = Path(__file__).resolve().parents[3]
@@ -59,6 +60,7 @@ async def lifespan(app: FastAPI):
     else:
         app.state.model = None
     app.state.inference_lock = threading.Lock()
+    app.state.scan_predict = predict
     yield
 
 
@@ -76,6 +78,7 @@ app.add_middleware(
     allow_headers=["*"],
 )
 app.include_router(router)
+app.include_router(scans_router)
 
 
 @app.middleware("http")

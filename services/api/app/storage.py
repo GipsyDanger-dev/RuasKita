@@ -13,7 +13,7 @@ from contextlib import contextmanager
 from pathlib import Path
 from typing import Any, Iterator, Protocol
 
-SCHEMA_VERSION = 2
+SCHEMA_VERSION = 3
 
 
 def storage_backend() -> str:
@@ -43,6 +43,12 @@ def _ensure_sqlite_schema(db: sqlite3.Connection) -> None:
         CREATE TABLE IF NOT EXISTS incident_idempotency (
             request_id TEXT PRIMARY KEY,
             incident_id TEXT NOT NULL
+        );
+        CREATE TABLE IF NOT EXISTS scan_sessions (id TEXT PRIMARY KEY, payload TEXT NOT NULL);
+        CREATE TABLE IF NOT EXISTS scan_frames (
+            session_id TEXT NOT NULL, sequence INTEGER NOT NULL,
+            fingerprint TEXT NOT NULL, payload TEXT NOT NULL,
+            PRIMARY KEY (session_id, sequence)
         );
         """
     )

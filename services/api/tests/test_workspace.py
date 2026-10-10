@@ -99,10 +99,10 @@ class WorkspaceTests(unittest.TestCase):
     def test_storage_metadata_is_explicitly_local(self):
         metadata = storage_metadata()
         self.assertEqual(metadata["backend"], "sqlite")
-        self.assertEqual(metadata["schema_version"], 2)
+        self.assertEqual(metadata["schema_version"], 3)
         health = self.client.get("/health").json()
         self.assertEqual(health["storage"], "SQLITE")
-        self.assertEqual(health["storage_details"]["schema_version"], 2)
+        self.assertEqual(health["storage_details"]["schema_version"], 3)
         readiness = self.client.get("/ready")
         self.assertEqual(readiness.status_code, 200)
         self.assertEqual(readiness.json()["status"], "ready")
