@@ -1,7 +1,7 @@
 "use client";
 
 import { useState } from "react";
-import { useRouter } from "next/navigation";
+import { usePathname, useRouter } from "next/navigation";
 import Link from "next/link";
 import { useTheme } from "@/components/workspace/theme";
 import "./home.css";
@@ -32,6 +32,7 @@ function Icon({ name }: { name: string }) {
 }
 export default function Home() {
   const router = useRouter();
+  const pathname = usePathname();
   const { dark, toggle } = useTheme();
   const [selected, setSelected] = useState<number | null>(null);
   const [query, setQuery] = useState("");
@@ -46,9 +47,9 @@ export default function Home() {
     <header className="home-nav">
       <Link className="home-brand" href="/" aria-label="RuasKita beranda"><img src={dark ? "/brand/dark.png" : "/brand/light.png"} alt="" />RuasKita</Link>
       <nav aria-label="Navigasi utama">
-        <button className="active" onClick={() => router.push("/")}>Beranda</button>
-        <button onClick={() => router.push("/map")}>Peta</button>
-        <button onClick={() => router.push("/reports")}>Laporan</button>
+        <Link className={pathname === "/" ? "active" : ""} href="/" aria-current={pathname === "/" ? "page" : undefined}>Beranda</Link>
+        <Link className={pathname.startsWith("/map") ? "active" : ""} href="/map" aria-current={pathname.startsWith("/map") ? "page" : undefined}>Peta</Link>
+        <Link className={pathname.startsWith("/reports") ? "active" : ""} href="/reports" aria-current={pathname.startsWith("/reports") ? "page" : undefined}>Laporan</Link>
       </nav>
       <label className="home-search"><Icon name="search" /><input value={query} onChange={e => setQuery(e.target.value)} onKeyDown={e => { if (e.key === "Enter") router.push(`/incidents?road=${encodeURIComponent(query)}`); }} placeholder="Cari jalan, tekan Enter..." aria-label="Cari jalan" /></label>
       <div className="profile-wrap"><button className="profile-button" onClick={() => setProfile(!profile)} aria-expanded={profile}><span className="avatar" /><span>Workspace<small>Operator lokal</small></span><Icon name="chevron" /></button>
