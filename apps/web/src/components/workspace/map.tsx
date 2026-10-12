@@ -93,6 +93,9 @@ export default function RoadMap({
       resize.disconnect();
       instance.remove();
       map.current = null;
+      // Strict Mode remounts the map; its new viewport has not been framed yet.
+      viewportKey.current = "";
+      coverageFramed.current = false;
     };
   }, []);
   useEffect(() => {
