@@ -61,10 +61,10 @@ export type Report = {
   };
 };
 export const statusNames: Record<Status, string> = {
-  candidate: "Kandidat",
-  verified: "Ditinjau",
-  assigned: "Ditugaskan",
-  in_repair: "Diperbaiki",
+  candidate: "Perlu ditinjau",
+  verified: "Sudah ditinjau",
+  assigned: "Menunggu perbaikan",
+  in_repair: "Sedang diperbaiki",
   recheck: "Periksa ulang",
   resolved: "Selesai",
 };

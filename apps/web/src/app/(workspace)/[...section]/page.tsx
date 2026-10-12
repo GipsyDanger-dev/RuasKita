@@ -1,5 +1,6 @@
 import { notFound } from "next/navigation";
 import Shell from "@/components/workspace/shell";
+import PublicShell from "@/components/workspace/public-shell";
 import WorkspacePage from "@/components/workspace/pages";
 
 const routes = [
@@ -36,9 +37,16 @@ export default async function Page({
       typeof value === "string" ? value : "",
     ]),
   );
+  const isPublicRoute = ["map", "incidents"].includes(section[0]);
+  const page = (
+    <WorkspacePage
+      section={section[0]}
+      id={section[1]}
+      filter={filter}
+      publicView={isPublicRoute}
+    />
+  );
   return (
-    <Shell>
-      <WorkspacePage section={section[0]} id={section[1]} filter={filter} />
-    </Shell>
+    isPublicRoute ? <PublicShell>{page}</PublicShell> : <Shell>{page}</Shell>
   );
 }

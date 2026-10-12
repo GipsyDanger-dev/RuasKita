@@ -104,12 +104,12 @@ export function NewIncident() {
   return (
     <>
       <Link className="rk-back" href="/incidents">
-        ← Semua insiden
+        ← Kembali ke laporan
       </Link>
       <PageTitle
         eyebrow="LAPORAN BARU"
-        title="Mulai dari bukti."
-        description="Catat kondisi yang terlihat. Setiap laporan masuk sebagai kandidat untuk ditinjau."
+        title="Laporkan kondisi jalan"
+        description="Bagikan lokasi dan foto jalan. Laporanmu akan tercatat sebagai temuan untuk ditinjau."
       />
       <form className="rk-editor-grid" onSubmit={submit}>
         <div>
@@ -123,12 +123,12 @@ export function NewIncident() {
             disabled={busy}
           />
           <p className="rk-helper">
-            Analisis AI opsional. Foto tanpa analisis tetap bisa dilaporkan
-            secara manual. Kedalaman dalam cm belum tersedia.
+            Foto membantu menjelaskan kondisi jalan. Kedalaman lubang belum
+            bisa diukur dari foto.
           </p>
           <p className="rk-helper">
-            Gunakan foto tanpa wajah atau pelat yang dapat dikenali. Metadata
-            EXIF dibersihkan; blur otomatis belum tersedia.
+            Hindari wajah dan pelat kendaraan. Data tersembunyi pada foto
+            dibersihkan, tetapi wajah dan pelat belum disamarkan otomatis.
           </p>
         </div>
         <div>
@@ -196,18 +196,19 @@ export function NewIncident() {
               {locating ? "Mencari lokasi…" : "⌖ Gunakan lokasi perangkat"}
             </button>
             <p className="rk-helper">
-              GPS kamera disalin saat memilih frame, bukan saat memutar video.
-              Klik peta atau isi koordinat untuk mengubah titik laporan.
+              Pilih titik pada peta, gunakan lokasi perangkat, atau masukkan
+              koordinat jika kamu mengetahuinya. Lokasi video diambil dari
+              frame yang dipilih.
             </p>
             <label className="rk-field">
-              Tingkat perhatian awal
+              Seberapa mengganggu kondisi ini?
               <select name="severity" defaultValue="medium">
                 <option value="low">Rendah</option>
                 <option value="medium">Sedang</option>
                 <option value="high">Tinggi</option>
               </select>
               <small>
-                Penilaian pelapor, bukan ukuran kedalaman atau skor AI.
+                Penilaian awal dari pelapor, bukan hasil pengukuran.
               </small>
             </label>
             <label className="rk-field">
@@ -238,7 +239,7 @@ export function NewIncident() {
               Batal
             </Link>
             <button className="rk-button" disabled={!evidence || busy}>
-              {busy ? "Menyimpan…" : "Simpan kandidat insiden →"}
+              {busy ? "Mengirim laporan…" : "Kirim laporan"}
             </button>
           </div>
         </div>
@@ -247,7 +248,7 @@ export function NewIncident() {
   );
 }
 
-export function IncidentDetail({ id }: { id: string }) {
+export function IncidentDetail({ id, publicView = false }: { id: string; publicView?: boolean }) {
   const resource = useResource<Incident>(
     `/v1/incidents/${encodeURIComponent(id)}`,
   );
@@ -257,15 +258,18 @@ export function IncidentDetail({ id }: { id: string }) {
       key={`${id}-${resource.data.revision}`}
       item={resource.data}
       reload={resource.reload}
+      publicView={publicView}
     />
   );
 }
 function IncidentContent({
   item,
   reload,
+  publicView,
 }: {
   item: Incident;
   reload: () => void;
+  publicView: boolean;
 }) {
   const [tab, setTab] = useState("overview");
   const [photo, setPhoto] = useState(item.observations.length - 1);
@@ -305,15 +309,15 @@ function IncidentContent({
   return (
     <>
       <Link href="/incidents" className="rk-back">
-        ← Semua insiden
+        ← Semua laporan
       </Link>
       <PageTitle
-        eyebrow={shortId(item.id)}
+        eyebrow={publicView ? "LAPORAN JALAN" : shortId(item.id)}
         title={item.road}
-        description={`Dilaporkan ${dateLabel(item.created_at)} · ${item.contributor}`}
+        description={publicView ? `Laporan dibuat ${dateLabel(item.created_at)}` : `Dilaporkan ${dateLabel(item.created_at)} · ${item.contributor}`}
         action={<Badge status={item.status} />}
       />
-      <div className="rk-tabs" role="tablist" aria-label="Detail insiden">
+      {!publicView && <div className="rk-tabs" role="tablist" aria-label="Detail insiden">
         {[
           ["overview", "Ringkasan"],
           ["history", "Riwayat"],
@@ -336,7 +340,7 @@ function IncidentContent({
             {label}
           </button>
         ))}
-      </div>
+      </div>}
       <div id="incident-panel" role="tabpanel" aria-labelledby={`tab-${tab}`}>
         {tab === "overview" && (
           <div className="rk-detail-grid">
@@ -377,42 +381,39 @@ function IncidentContent({
               <p className="rk-note">{observation.notes}</p>
             </section>
             <aside className="rk-detail-meta">
-              <h2>Informasi insiden</h2>
+              <h2>{publicView ? "Rincian laporan" : "Informasi insiden"}</h2>
               <dl>
                 <dt>Tingkat perhatian (manual)</dt>
                 <dd className={`rk-severity ${item.severity}`}>
                   {severityNames[item.severity]}
                 </dd>
-                <dt>Penanggung jawab</dt>
-                <dd>{item.assignee || "Belum ditugaskan"}</dd>
+                {!publicView && <><dt>Penanggung jawab</dt><dd>{item.assignee || "Belum ditugaskan"}</dd></>}
                 <dt>Lokasi yang dilaporkan</dt>
                 <dd>
                   {item.latitude.toFixed(6)}, {item.longitude.toFixed(6)}
                   <Link href={`/map?id=${item.id}`}>Lihat di peta ↗</Link>
                 </dd>
-                <dt>Analisis bukti terpilih</dt>
-                <dd>
-                  {observation.analysis
-                    ? `${observation.analysis.potholes.length} deteksi · ${observation.analysis.engine}`
-                    : "Belum dianalisis AI"}
-                </dd>
-                <dt>Kedalaman metrik</dt>
-                <dd>Belum terukur</dd>
+                {!publicView && <>
+                  <dt>Analisis bukti terpilih</dt>
+                  <dd>{observation.analysis ? `${observation.analysis.potholes.length} deteksi · ${observation.analysis.engine}` : "Belum dianalisis AI"}</dd>
+                  <dt>Kedalaman metrik</dt>
+                  <dd>Belum terukur</dd>
+                </>}
               </dl>
-              <p className="rk-helper">
+              {!publicView && <p className="rk-helper">
                 Ditinjau berarti pemeriksaan manual di workspace lokal, bukan
                 verifikasi lapangan atau sertifikasi.
-              </p>
-              <Link
+              </p>}
+              {!publicView && <Link
                 className="rk-button rk-secondary"
                 href={`/ruasview?id=${item.id}`}
               >
                 Buka RuasView ↗
-              </Link>
+              </Link>}
             </aside>
           </div>
         )}
-        {tab === "history" && (
+        {tab === "history" && !publicView && (
           <section className="rk-timeline">
             <h2>Jejak perubahan</h2>
             {[...item.history].reverse().map((event, index) => (
@@ -427,7 +428,7 @@ function IncidentContent({
             ))}
           </section>
         )}
-        {(tab === "action" || tab === "observation") && (
+        {!publicView && (tab === "action" || tab === "observation") && (
           <form className="rk-action-form" onSubmit={submit}>
             <h2>
               {tab === "observation"

@@ -33,7 +33,7 @@ const RoadMap = dynamic(() => import("./map"), {
 });
 const newReport = (
   <Link className="rk-button" href="/incidents/new">
-    + Laporkan kerusakan
+    Laporkan jalan
   </Link>
 );
 type Filter = Record<string, string>;
@@ -42,14 +42,16 @@ export default function WorkspacePage({
   section,
   id,
   filter,
+  publicView = false,
 }: {
   section: string;
   id?: string;
   filter: Filter;
+  publicView?: boolean;
 }) {
   if (section === "scan") return <ScanPage />;
   if (section === "incidents" && id === "new") return <NewIncident />;
-  if (section === "incidents" && id) return <IncidentDetail id={id} />;
+  if (section === "incidents" && id) return <IncidentDetail id={id} publicView={publicView} />;
   if (section === "reports")
     return id ? <ReportDetail id={id} /> : <ReportsPage />;
   if (section === "system") return <SystemPage />;
@@ -58,10 +60,11 @@ export default function WorkspacePage({
       key={`${section}-${JSON.stringify(filter)}`}
       section={section}
       filter={filter}
+      publicView={publicView}
     />
   );
 }
-function DataPages({ section, filter }: { section: string; filter: Filter }) {
+function DataPages({ section, filter, publicView }: { section: string; filter: Filter; publicView: boolean }) {
   const resource = useResource<Incident[]>("/v1/incidents", ["map", "incidents", "dashboard"].includes(section) ? 4000 : 0);
   if (!resource.data) return <LoadState {...resource} />;
   const items = resource.data;
@@ -69,9 +72,9 @@ function DataPages({ section, filter }: { section: string; filter: Filter }) {
     case "dashboard":
       return <Dashboard items={items} reload={resource.reload} />;
     case "incidents":
-      return <Incidents items={items} filter={filter} />;
+      return <Incidents items={items} filter={filter} publicView={publicView} />;
     case "map":
-      return <MapPage items={items} filter={filter} reload={resource.reload} />;
+      return <MapPage items={items} filter={filter} reload={resource.reload} publicView={publicView} />;
     case "roads":
       return <Roads items={items} />;
     case "repairs":
@@ -125,7 +128,7 @@ function Metrics({ items }: { items: Incident[] }) {
     </div>
   );
 }
-function Incidents({ items, filter }: { items: Incident[]; filter: Filter }) {
+function Incidents({ items, filter, publicView }: { items: Incident[]; filter: Filter; publicView: boolean }) {
   const [query, setQuery] = useState(filter.road || "");
   const [status, setStatus] = useState(filter.status || "");
   const [severity, setSeverity] = useState(filter.severity || "");
@@ -150,25 +153,27 @@ function Incidents({ items, filter }: { items: Incident[]; filter: Filter }) {
   return (
     <>
       <PageTitle
-        eyebrow="INSIDEN JALAN"
-        title="Bukti menjadi tindakan."
+        eyebrow={publicView ? "LAPORAN JALAN" : "INSIDEN JALAN"}
+        title={publicView ? "Laporan jalan" : "Bukti menjadi tindakan."}
         description={
           filter.contributor
             ? `Observasi oleh ${filter.contributor}`
-            : "Kelola temuan, telusuri bukti, dan ikuti perkembangannya."
+            : publicView
+              ? "Cari laporan berdasarkan nama jalan dan lihat perkembangannya."
+              : "Kelola temuan, telusuri bukti, dan ikuti perkembangannya."
         }
         action={newReport}
       />
       <div className="rk-toolbar">
         <label className="rk-search-field">
-          <span className="rk-sr">Cari insiden</span>
+          <span className="rk-sr">Cari laporan jalan</span>
           <input
             value={query}
             onChange={(e) => {
               setQuery(e.target.value);
               setPage(1);
             }}
-            placeholder="Cari ruas atau ID insiden…"
+            placeholder="Cari nama jalan…"
           />
         </label>
         <label className="rk-inline-field">
@@ -189,7 +194,7 @@ function Incidents({ items, filter }: { items: Incident[]; filter: Filter }) {
           </select>
         </label>
         <label className="rk-inline-field">
-          Perhatian
+          {publicView ? "Perkiraan kondisi" : "Perhatian"}
           <select
             value={severity}
             onChange={(e) => {
@@ -214,7 +219,7 @@ function Incidents({ items, filter }: { items: Incident[]; filter: Filter }) {
               setPage(1);
             }}
           />
-          Hanya insiden aktif
+          {publicView ? "Sembunyikan laporan selesai" : "Hanya insiden aktif"}
         </label>
         <button className="rk-text-button" onClick={reset}>
           Reset filter
@@ -226,7 +231,7 @@ function Incidents({ items, filter }: { items: Incident[]; filter: Filter }) {
         <>
           <IncidentTable items={shown.slice((page - 1) * 10, page * 10)} />
           <div className="rk-pagination">
-            <span>{shown.length} insiden</span>
+            <span>{shown.length} {publicView ? "laporan" : "insiden"}</span>
             <div>
               <button
                 className="rk-icon-button"
@@ -258,10 +263,12 @@ function MapPage({
   items,
   filter,
   reload,
+  publicView,
 }: {
   items: Incident[];
   filter: Filter;
   reload: () => void;
+  publicView: boolean;
 }) {
   const [query, setQuery] = useState("");
   const [status, setStatus] = useState("");
@@ -283,9 +290,9 @@ function MapPage({
   return (
     <>
       <PageTitle
-        eyebrow="PETA KONDISI JALAN"
-        title="Lihat konteksnya."
-        description="Titik berasal dari koordinat laporan tersimpan, bukan posisi dekoratif."
+        eyebrow="PETA JALAN"
+        title={publicView ? "Kondisi jalan di peta" : "Lihat konteksnya."}
+        description={publicView ? "Jelajahi lokasi laporan dan lihat status terbarunya." : "Titik berasal dari koordinat laporan tersimpan, bukan posisi dekoratif."}
         action={newReport}
       />
       <div className="rk-map-workspace">
@@ -301,14 +308,14 @@ function MapPage({
           <label className="rk-field">
             Tampilkan
             <select value={status} onChange={(e) => setStatus(e.target.value)}>
-              <option value="">Semua insiden</option>
-              <option value="active">Insiden aktif</option>
+            <option value="">Semua laporan</option>
+              <option value="active">Belum selesai</option>
               <option value="resolved">Selesai</option>
               <option value="recheck">Periksa ulang</option>
             </select>
           </label>
           <p className="rk-helper">
-            {shown.length} titik ·{" "}
+            {shown.length} laporan ·{" "}
             <button className="rk-text-button" onClick={reload}>
               Perbarui
             </button>
@@ -345,15 +352,15 @@ function MapPage({
                 </p>
               </div>
               <Link className="rk-button" href={detailURL(chosen.id)}>
-                Detail ↗
+                {publicView ? "Lihat laporan" : "Detail ↗"}
               </Link>
             </div>
           )}
         </section>
       </div>
-      <ScanLegend />
-      {coverage.error && <p className="rk-error" role="alert">Jejak scan belum diperbarui: {coverage.error}</p>}
-      <p className="rk-helper">Data diperbarui setiap 4 detik. Jejak scan tampil saat filter kosong. GPS adalah posisi perangkat; road matching dan GeoFusion belum aktif. <Link href="/scan">Mulai live scan</Link></p>
+      {!publicView && <ScanLegend />}
+      {!publicView && coverage.error && <p className="rk-error" role="alert">Jejak scan belum diperbarui: {coverage.error}</p>}
+      <p className="rk-helper">{publicView ? "Lokasi dan status mengikuti informasi yang tersimpan pada laporan. Periksa waktu pembaruan sebelum menjadikannya acuan perjalanan." : <>Data diperbarui setiap 4 detik. Jejak scan tampil saat filter kosong. GPS adalah posisi perangkat; road matching dan GeoFusion belum aktif. <Link href="/scan">Mulai live scan</Link></>}</p>
     </>
   );
 }

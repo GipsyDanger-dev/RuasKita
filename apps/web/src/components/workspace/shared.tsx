@@ -55,8 +55,8 @@ export function LoadState({
   return (
     <div className="rk-empty rk-empty-status" role={error ? "alert" : "status"}>
       <span className="rk-kicker">{error ? "KONEKSI" : "SEBENTAR"}</span>
-      <h2>{error ? "Data belum bisa dimuat" : "Memuat workspace…"}</h2>
-      <p>{error ?? "Mengambil data tersimpan."}</p>
+      <h2>{error ? "Data belum bisa dimuat" : "Memuat informasi jalan…"}</h2>
+      <p>{error ?? "Mengambil laporan terbaru."}</p>
       {error && (
         <button className="rk-button" onClick={reload}>
           Coba lagi
@@ -66,8 +66,8 @@ export function LoadState({
   );
 }
 export function Empty({
-  title = "Belum ada insiden",
-  description = "Mulai dari satu foto jalan. Laporan yang disimpan akan muncul di sini.",
+  title = "Belum ada laporan jalan",
+  description = "Laporan jalan yang tersimpan akan muncul di sini.",
   action = true,
 }: {
   title?: string;
@@ -80,13 +80,13 @@ export function Empty({
         00
       </span>
       <div className="rk-empty-copy">
-        <p className="rk-kicker">BELUM ADA DATA</p>
+        <p className="rk-kicker">LAPORAN JALAN</p>
         <h2>{title}</h2>
         <p>{description}</p>
       </div>
       {action && (
         <Link className="rk-button" href="/incidents/new">
-          Buat laporan pertama
+          Laporkan kondisi jalan
         </Link>
       )}
     </div>
@@ -136,7 +136,7 @@ export function IncidentTable({ items }: { items: Incident[] }) {
       <table className="rk-table">
         <thead>
           <tr>
-            <th scope="col">Lokasi / insiden</th>
+            <th scope="col">Nama jalan</th>
             <th scope="col">Tingkat perhatian</th>
             <th scope="col">Status</th>
             <th scope="col">Diperbarui</th>
