@@ -24,6 +24,7 @@ import {
 import { NewIncident, IncidentDetail } from "./incident-editor";
 import { ReportsPage, ReportDetail } from "./reports";
 import { EvidenceImage } from "./evidence";
+import { ReportList } from "./report-list";
 import Dashboard from "./dashboard";
 import ScanPage, { ScanLegend } from "./scan-page";
 import type { ScanPoint } from "@/lib/scans";
@@ -162,7 +163,7 @@ function Incidents({ items, filter, publicView }: { items: Incident[]; filter: F
               ? "Cari laporan berdasarkan nama jalan dan lihat perkembangannya."
               : "Kelola temuan, telusuri bukti, dan ikuti perkembangannya."
         }
-        action={newReport}
+        action={publicView ? undefined : newReport}
       />
       <div className="rk-toolbar">
         <label className="rk-search-field">
@@ -229,7 +230,7 @@ function Incidents({ items, filter, publicView }: { items: Incident[]; filter: F
         <Empty />
       ) : (
         <>
-          <IncidentTable items={shown.slice((page - 1) * 10, page * 10)} />
+          {publicView ? <ReportList items={shown.slice((page - 1) * 10, page * 10)} /> : <IncidentTable items={shown.slice((page - 1) * 10, page * 10)} />}
           <div className="rk-pagination">
             <span>{shown.length} {publicView ? "laporan" : "insiden"}</span>
             <div>
@@ -270,7 +271,7 @@ function MapPage({
   reload: () => void;
   publicView: boolean;
 }) {
-  const [query, setQuery] = useState("");
+  const [query, setQuery] = useState(filter.road || "");
   const [status, setStatus] = useState("");
   const [selected, setSelected] = useState(filter.id || "");
   const coverage = useResource<ScanPoint[]>("/v1/scans/coverage", 4000);
@@ -293,7 +294,7 @@ function MapPage({
         eyebrow="PETA JALAN"
         title={publicView ? "Kondisi jalan di peta" : "Lihat konteksnya."}
         description={publicView ? "Jelajahi lokasi laporan dan lihat status terbarunya." : "Titik berasal dari koordinat laporan tersimpan, bukan posisi dekoratif."}
-        action={newReport}
+        action={publicView ? undefined : newReport}
       />
       <div className="rk-map-workspace">
         <aside className="rk-map-list">
@@ -330,7 +331,7 @@ function MapPage({
                 <strong>{i.road}</strong>
                 <Badge status={i.status} />
                 <small>
-                  {i.latitude.toFixed(5)}, {i.longitude.toFixed(5)}
+                  {publicView ? `Diperbarui ${dateLabel(i.updated_at)}` : `${i.latitude.toFixed(5)}, ${i.longitude.toFixed(5)}`}
                 </small>
               </button>
             ))}

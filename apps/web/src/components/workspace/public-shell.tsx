@@ -4,6 +4,7 @@ import Link from "next/link";
 import { usePathname } from "next/navigation";
 import { useTheme } from "./theme";
 import "./workspace.css";
+import "./shell.css";
 import "./public-shell.css";
 
 function ThemeIcon({ dark }: { dark: boolean }) {
@@ -17,10 +18,10 @@ function ThemeIcon({ dark }: { dark: boolean }) {
 export default function PublicShell({ children }: { children: React.ReactNode }) {
   const pathname = usePathname();
   const { dark, toggle } = useTheme();
-  const reportActive = pathname.startsWith("/incidents");
+  const reportActive = pathname.startsWith("/incidents") && pathname !== "/incidents/new";
 
   return (
-    <div className={`rk-app rk-public-root${dark ? " rk-dark" : ""}`}>
+    <div className={`rk-app rk-public-root${dark ? " rk-dark" : ""}`} data-page={pathname === "/" ? "home" : pathname.split("/")[1]}>
       <a className="rk-public-skip" href="#public-main">Lewati navigasi</a>
       <header className="rk-public-header">
         <Link className="rk-public-brand" href="/" aria-label="RuasKita, beranda">
@@ -28,21 +29,23 @@ export default function PublicShell({ children }: { children: React.ReactNode })
           <span>RuasKita</span>
         </Link>
         <nav aria-label="Navigasi utama">
+          <Link href="/" aria-current={pathname === "/" ? "page" : undefined}>Beranda</Link>
           <Link href="/map" aria-current={pathname === "/map" ? "page" : undefined}>Peta jalan</Link>
           <Link href="/incidents" aria-current={reportActive ? "page" : undefined}>Laporan</Link>
+          <Link href="/scan" aria-current={pathname === "/scan" ? "page" : undefined}>Live scan</Link>
         </nav>
         <div className="rk-public-tools">
           <button className="rk-public-theme" type="button" onClick={toggle} aria-label={dark ? "Gunakan tema terang" : "Gunakan tema gelap"}>
             <ThemeIcon dark={dark} />
           </button>
-          <Link className="rk-public-report" href="/incidents/new">Laporkan jalan</Link>
+          <Link className="rk-public-report" href="/incidents/new" aria-current={pathname === "/incidents/new" ? "page" : undefined}><span aria-hidden="true">+</span> Buat laporan</Link>
         </div>
       </header>
       <div className="rk-public-body">
         <main id="public-main" className="rk-main rk-public-main" tabIndex={-1}>{children}</main>
         <footer className="rk-public-footer">
-          <span>RuasKita · informasi jalan untuk semua.</span>
-          <span>Laporan adalah informasi awal dan perlu diperiksa.</span>
+          <Link href="/">RuasKita <span>Jalan kita, tanggung jawab bersama.</span></Link>
+          <span>Informasi dari masyarakat. Bukan jaminan kondisi jalan.</span>
         </footer>
       </div>
     </div>

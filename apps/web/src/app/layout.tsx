@@ -13,8 +13,8 @@ const geistMono = Geist_Mono({
 });
 
 export const metadata: Metadata = {
-  title: "RuasKita | Road Intelligence",
-  description: "Desktop workbench for RuasVision pothole analysis.",
+  title: "RuasKita | Kabar jalan dari kita",
+  description: "Lihat laporan kondisi jalan, bagikan foto dan lokasi, dan catat temuan di sepanjang perjalanan bersama RuasKita.",
 };
 
 export default function RootLayout({ children }: LayoutProps<"/">) {

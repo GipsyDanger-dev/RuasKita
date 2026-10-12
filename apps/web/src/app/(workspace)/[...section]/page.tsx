@@ -37,7 +37,7 @@ export default async function Page({
       typeof value === "string" ? value : "",
     ]),
   );
-  const isPublicRoute = ["map", "incidents"].includes(section[0]);
+  const isPublicRoute = ["map", "incidents", "scan"].includes(section[0]);
   const page = (
     <WorkspacePage
       section={section[0]}

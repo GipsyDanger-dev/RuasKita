@@ -80,6 +80,10 @@ export function NewIncident() {
   async function submit(e: FormEvent<HTMLFormElement>) {
     e.preventDefault();
     if (!evidence || busy) return;
+    if (!pin) {
+      setError("Tentukan lokasi jalan melalui peta, GPS, atau koordinat sebelum mengirim laporan.");
+      return;
+    }
     const data = Object.fromEntries(new FormData(e.currentTarget));
     setBusy(true);
     setError("");
@@ -108,14 +112,17 @@ export function NewIncident() {
       </Link>
       <PageTitle
         eyebrow="LAPORAN BARU"
-        title="Laporkan kondisi jalan"
-        description="Bagikan lokasi dan foto jalan. Laporanmu akan tercatat sebagai temuan untuk ditinjau."
+        title="Apa yang kamu temui di jalan?"
+        description="Bagikan foto dan lokasinya. Ceritamu membantu orang lain mengenali kondisi jalan."
       />
-      <form className="rk-editor-grid" onSubmit={submit}>
+      <form className="rk-editor-grid" onSubmit={submit} onInvalidCapture={(event) => {
+        const details = (event.target as HTMLElement).closest("details");
+        if (details) details.open = true;
+      }}>
         <div>
           <div className="rk-section-heading">
             <span>01</span>
-            <h2>Bukti visual</h2>
+            <h2>Mulai dari satu foto</h2>
           </div>
           <EvidenceInput
             onChange={setEvidence}
@@ -134,7 +141,7 @@ export function NewIncident() {
         <div>
           <div className="rk-section-heading">
             <span>02</span>
-            <h2>Lokasi & kondisi</h2>
+            <h2>Di mana kejadiannya?</h2>
           </div>
           <fieldset disabled={busy} className="rk-fieldset">
             <label className="rk-field">
@@ -147,6 +154,8 @@ export function NewIncident() {
                 placeholder="Contoh: Jl. Kaliurang KM 5"
               />
             </label>
+            <details className="citizen-coordinates">
+            <summary>Isi koordinat secara manual</summary>
             <div className="rk-field-pair">
               <label className="rk-field">
                 Latitude
@@ -156,7 +165,6 @@ export function NewIncident() {
                   step="any"
                   min="-90"
                   max="90"
-                  required
                   value={lat}
                   onChange={(e) => setLat(e.target.value)}
                   placeholder="-7.7956"
@@ -170,13 +178,13 @@ export function NewIncident() {
                   step="any"
                   min="-180"
                   max="180"
-                  required
                   value={lng}
                   onChange={(e) => setLng(e.target.value)}
                   placeholder="110.3695"
                 />
               </label>
             </div>
+            </details>
             <div className="rk-location-picker">
               <RoadMap
                 items={noItems}
@@ -193,19 +201,17 @@ export function NewIncident() {
               onClick={locate}
               disabled={locating}
             >
-              {locating ? "Mencari lokasi…" : "⌖ Gunakan lokasi perangkat"}
+              {locating ? "Mencari lokasi…" : "Gunakan lokasi saya"}
             </button>
             <p className="rk-helper">
-              Pilih titik pada peta, gunakan lokasi perangkat, atau masukkan
-              koordinat jika kamu mengetahuinya. Lokasi video diambil dari
-              frame yang dipilih.
+              {pin ? "Titik lokasi sudah dipilih. Pastikan sesuai tempat jalan rusak, bukan lokasi rumahmu." : "Ketuk lokasi jalan pada peta atau gunakan GPS saat berada di lokasi."}
             </p>
             <label className="rk-field">
               Seberapa mengganggu kondisi ini?
               <select name="severity" defaultValue="medium">
-                <option value="low">Rendah</option>
-                <option value="medium">Sedang</option>
-                <option value="high">Tinggi</option>
+                <option value="low">Ringan, masih mudah dilewati</option>
+                <option value="medium">Cukup mengganggu perjalanan</option>
+                <option value="high">Berbahaya, perlu sangat berhati-hati</option>
               </select>
               <small>
                 Penilaian awal dari pelapor, bukan hasil pengukuran.
@@ -341,7 +347,7 @@ function IncidentContent({
           </button>
         ))}
       </div>}
-      <div id="incident-panel" role="tabpanel" aria-labelledby={`tab-${tab}`}>
+      <div id="incident-panel" role={publicView ? undefined : "tabpanel"} aria-labelledby={publicView ? undefined : `tab-${tab}`}>
         {tab === "overview" && (
           <div className="rk-detail-grid">
             <section>

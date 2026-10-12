@@ -63,8 +63,10 @@ export default function EvidenceInput({
   const [result, setResult] = useState<Analysis>();
   const [error, setError] = useState("");
   const [busy, setBusy] = useState("");
+  const [fileName, setFileName] = useState("");
   async function choose(file?: File) {
     if (!file) return;
+    setFileName(file.name);
     setBusy("Mengunggah foto…");
     setError("");
     setId("");
@@ -100,14 +102,11 @@ export default function EvidenceInput({
   }
   return (
     <section className="rk-evidence-input">
-      <LiveCamera
-        onCapture={(file) => void choose(file)}
-        onLocationChange={onLocationChange}
-        disabled={!!busy || disabled}
-      />
       <label className="rk-upload">
         <span>{label}</span>
         <small>JPEG, PNG, WebP · maksimal 10 MB</small>
+        <span className="citizen-upload-action">{fileName ? "Ganti foto" : "Pilih foto dari perangkat"}</span>
+        {fileName && <small className="citizen-upload-name">{fileName}</small>}
         <input
           aria-label={label}
           type="file"
@@ -119,6 +118,11 @@ export default function EvidenceInput({
           }}
         />
       </label>
+      <LiveCamera
+        onCapture={(file) => void choose(file)}
+        onLocationChange={onLocationChange}
+        disabled={!!busy || disabled}
+      />
       {id && <EvidenceImage id={id} analysis={result} />}
       {id && analyze && (
         <button
